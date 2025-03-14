@@ -4,6 +4,7 @@ public struct Cell //单元格类
 {
     public enum Type//三种类型
     {
+        Invalid,
         Empty,
         Mine,
         Number

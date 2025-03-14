@@ -6,6 +6,7 @@ public class Game : MonoBehaviour
 {
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
+    public Vector2 TouchPosition;
 
     public int width = 8;
     public int height = 16;
@@ -122,6 +123,7 @@ public class Game : MonoBehaviour
                 case TouchPhase.Began:
                     isTouching = true;
                     touchTime = 0f; // 重置计时器
+                    TouchPosition = touch.position;
                     Debug.Log("触摸开始");
                     break;
 
@@ -129,8 +131,9 @@ public class Game : MonoBehaviour
                     if (isTouching)
                     {
                         touchTime += Time.deltaTime; // 累计触摸时间
-                        if (touchTime > 1f) // 长按 1 秒
+                        if (touchTime > 0.25f) // 长按 1 秒
                         {
+                            Flags();
                             Debug.Log("长按操作");
                             isTouching = false; // 重置状态
                         }
@@ -145,6 +148,34 @@ public class Game : MonoBehaviour
             }
         }
     }
+    private void Flags()
+    {
+        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+        Cell cell = GetCell(cellPosition.x, cellPosition.y);
+        if (cell.type == Cell.Type.Invalid || cell.revealed)
+        {
+            return;
+        }
+        cell.flagged = !cell.flagged;
+        state[cellPosition.x, cellPosition.y] = cell;
+        board.Draw(state);
+    }
+    private Cell GetCell(int x,int y)
+    {
+        if (IsValid(x, y))
+        {
+            return state[x, y];
+        }
+        else {
+            return new Cell();
+        }
+    }
+    private bool IsValid(int x,int y)
+    {
+        return x >= 0 && x < width && y >= 0 && y <= height;
+    }
+
 }
 
 
