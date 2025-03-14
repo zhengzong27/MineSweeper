@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class Game : MonoBehaviour
 {
+    float touchTime = 0f; // 触摸持续时间
+    bool isTouching = false;
     public int width = 8;
     public int height = 16;
     public int mineCount = 20;
@@ -107,5 +109,34 @@ public class Game : MonoBehaviour
             }
         }
         return count;
+    }
+    void Update()
+    {
+        if (Input.touchCount > 0)
+        {
+            Touch touch = Input.GetTouch(0);
+
+            if (touch.phase == TouchPhase.Began)
+            {
+                isTouching = true;
+                touchTime = 0f;
+            }
+            else if (touch.phase == TouchPhase.Stationary || touch.phase == TouchPhase.Moved)
+            {
+                if (isTouching)
+                {
+                    touchTime += Time.deltaTime; // 累计触摸时间
+                    if (touchTime > 1f) // 长按 1 秒
+                    {
+                        Debug.Log("长按操作");
+                        isTouching = false; // 重置状态
+                    }
+                }
+            }
+            else if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+            {
+                isTouching = false;
+            }
+        }
     }
 }
