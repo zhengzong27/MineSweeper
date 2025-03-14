@@ -136,17 +136,36 @@ public class Game : MonoBehaviour
                             Flags();
                             Debug.Log("长按操作");
                             isTouching = false; // 重置状态
+                            return;
                         }
                     }
                     break;
 
                 case TouchPhase.Ended:
+                    Reveal();
+                    Debug.Log("揭开操作");
+                    isTouching = false;
+                    break;
                 case TouchPhase.Canceled:
                     isTouching = false;
                     Debug.Log("触摸结束");
                     break;
             }
         }
+    }
+    private void Reveal()
+    {
+        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+        Cell cell = GetCell(cellPosition.x, cellPosition.y);
+        if (cell.type==Cell.Type.Invalid||cell.revealed||cell.revealed)
+        {
+            return;
+        }
+        cell.revealed = true;
+        state[cellPosition.x, cellPosition.y] = cell;
+        board.Draw(state);
+
     }
     private void Flags()
     {
