@@ -82,7 +82,6 @@ public class Game : MonoBehaviour
                 {
                     cell.type = Cell.Type.Number;
                 }
-                cell.revealed = true;
                 state[x, y] = cell;
             }
         }
