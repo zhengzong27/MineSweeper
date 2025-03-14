@@ -6,8 +6,6 @@ public class Game : MonoBehaviour
 {
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
-    bool isMoving = false;
-    Vector2 initialTouchPosition;
 
     public int width = 8;
     public int height = 16;
@@ -115,102 +113,38 @@ public class Game : MonoBehaviour
     }
     void Update()
     {
-        if (Input.touchCount > 0)
+        if (Input.touchCount > 0) // 检查是否有触摸点
         {
-            Touch touch = Input.GetTouch(0);
+            Touch touch = Input.GetTouch(0); // 获取第一个触摸点
 
             switch (touch.phase)
             {
                 case TouchPhase.Began:
                     isTouching = true;
-                    isMoving = false;
-                    touchTime = 0f;
-                    initialTouchPosition = touch.position;
-                    break;
-
-                case TouchPhase.Moved:
-                    isMoving = true;
+                    touchTime = 0f; // 重置计时器
+                    Debug.Log("触摸开始");
                     break;
 
                 case TouchPhase.Stationary:
-                    if (isTouching && !isMoving)
+                    if (isTouching)
                     {
-                        touchTime += Time.deltaTime;
-                        if (touchTime >= 0.25f)
+                        touchTime += Time.deltaTime; // 累计触摸时间
+                        if (touchTime > 1f) // 长按 1 秒
                         {
-                            Flag(GetCellPosition(initialTouchPosition));
-                            ResetTouchState();
+                            Debug.Log("长按操作");
+                            isTouching = false; // 重置状态
                         }
                     }
                     break;
 
                 case TouchPhase.Ended:
                 case TouchPhase.Canceled:
-                    if (isTouching)
-                    {
-                        if (!isMoving && touchTime < 0.25f)
-                        {
-                            RevealCell(GetCellPosition(touch.position));
-                        }
-                        ResetTouchState();
-                    }
+                    isTouching = false;
+                    Debug.Log("触摸结束");
                     break;
             }
         }
     }
-    Vector2Int GetCellPosition(Vector2 screenPosition)
-    {
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(screenPosition);
-        return new Vector2Int(
-            Mathf.FloorToInt(worldPos.x + 0.5f),
-            Mathf.FloorToInt(worldPos.y + 0.5f)
-        );
-    }
-    void Flag(Vector2Int cellPos)
-    {
-        if (IsValidCell(cellPos))
-        {
-            Cell cell = state[cellPos.x, cellPos.y];
-            if (!cell.revealed)
-            {
-                cell.flagged = !cell.flagged;
-                state[cellPos.x, cellPos.y] = cell;
-                board.Draw(state);
-            }
-        }
-    }
-
-    void RevealCell(Vector2Int cellPos)
-    {
-        if (IsValidCell(cellPos))
-        {
-            Cell cell = state[cellPos.x, cellPos.y];
-            if (!cell.flagged && !cell.revealed)
-            {
-                cell.revealed = true;
-                state[cellPos.x, cellPos.y] = cell;
-                board.Draw(state);
-
-                if (cell.type == Cell.Type.Mine)
-                    GameOver();
-                else if (cell.type == Cell.Type.Empty)
-                    FloodFill(cellPos.x, cellPos.y);
-            }
-        }
-    }
-
-    bool IsValidCell(Vector2Int pos) =>
-        pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
-
-    void ResetTouchState()
-    {
-        isTouching = false;
-        isMoving = false;
-        touchTime = 0f;
-    }
-
-    // 需要补充的方法
-    void FloodFill(int x, int y) { /* 实现洪水填充算法 */ }
-    void GameOver() { /* 游戏结束逻辑 */ }
 }
-}
+
+
