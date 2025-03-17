@@ -1,21 +1,28 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Game : MonoBehaviour
 {
+    public Button Restart;
+    private bool GameOver;
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
     public Vector2 TouchPosition;
-
     public int width = 8;
     public int height = 16;
     public int mineCount = 20;
     private Board board;
     private Cell[,] state;
+    private void OnValidate()
+    {
+        mineCount = Mathf.Clamp(mineCount, 0, width + height);
+    }
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
+        Restart.onClick.AddListener(RestartGame);
     }
     private void Start()
     {
@@ -23,6 +30,8 @@ public class Game : MonoBehaviour
     }
     private void NewGame()
     {
+        GameOver = false;
+        Restart.gameObject.SetActive(false);
         state = new Cell[width, height];
         GenerateCells();
         GenerateMines();
@@ -115,47 +124,54 @@ public class Game : MonoBehaviour
     }
     void Update()
     {
-        if (Input.touchCount > 0) // 检查是否有触摸点
+        if (Input.GetKeyDown(KeyCode.R))
         {
-            Touch touch = Input.GetTouch(0); // 获取第一个触摸点
-
-            switch (touch.phase)
+            NewGame();
+        }
+        if (!GameOver)
+        {
+            if (Input.touchCount > 0) // 检查是否有触摸点
             {
-                case TouchPhase.Began:
-                    isTouching = true;
-                    touchTime = 0f; // 重置计时器
-                    TouchPosition = touch.position;
-                    Debug.Log("触摸开始");
-                    break;
+                Touch touch = Input.GetTouch(0); // 获取第一个触摸点
 
-                case TouchPhase.Stationary:
-                    if (isTouching)
-                    {
-                        touchTime += Time.deltaTime; // 累计触摸时间
-                    }
-                    break;
+                switch (touch.phase)
+                {
+                    case TouchPhase.Began:
+                        isTouching = true;
+                        touchTime = 0f; // 重置计时器
+                        TouchPosition = touch.position;
+                        Debug.Log("触摸开始");
+                        break;
 
-                case TouchPhase.Ended:
-                    if (isTouching)
-                    {
-                        if (touchTime > 0.25f) // 长按操作
+                    case TouchPhase.Stationary:
+                        if (isTouching)
                         {
-                            Flags();
-                            Debug.Log("长按操作");
+                            touchTime += Time.deltaTime; // 累计触摸时间
                         }
-                        else // 点击操作
-                        {
-                            Reveal();
-                            Debug.Log("揭开操作");
-                        }
-                        isTouching = false; // 重置状态
-                    }
-                    break;
+                        break;
 
-                case TouchPhase.Canceled:
-                    isTouching = false;
-                    Debug.Log("触摸取消");
-                    break;
+                    case TouchPhase.Ended:
+                        if (isTouching)
+                        {
+                            if (touchTime > 0.25f) // 长按操作
+                            {
+                                Flags();
+                                Debug.Log("长按操作");
+                            }
+                            else // 点击操作
+                            {
+                                Reveal();
+                                Debug.Log("揭开操作");
+                            }
+                            isTouching = false; // 重置状态
+                        }
+                        break;
+
+                    case TouchPhase.Canceled:
+                        isTouching = false;
+                        Debug.Log("触摸取消");
+                        break;
+                }
             }
         }
     }
@@ -164,18 +180,49 @@ public class Game : MonoBehaviour
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
         Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
         if (cell.type==Cell.Type.Invalid||cell.revealed||cell.flagged)
         {
             return;
         }
-        if(cell.type== Cell.Type.Empty)
+        switch (cell.type)
         {
-            Flood(cell);
+            case Cell.Type.Mine:
+                Explode(cell);
+                break;
+            case Cell.Type.Empty:
+                Flood(cell);
+                ifWin();
+                break;
+            default:
+                cell.revealed = true;
+                state[cellPosition.x, cellPosition.y] = cell;
+                ifWin();
+                break;
         }
-        cell.revealed = true;
-        state[cellPosition.x, cellPosition.y] = cell;
         board.Draw(state);
 
+    }
+    private void Explode(Cell cell)
+    {
+        Debug.Log("你输了!");
+        Restart.gameObject.SetActive(true);
+        GameOver = true;
+        cell.revealed = true;
+        cell.exploded = true;
+        state[cell.position.x, cell.position.y] = cell;
+        for (int x = 0; x < width; x++)
+        {
+            for(int y = 0; y < height; y++)
+            {
+                cell = state[x, y];
+                if(cell.type==Cell.Type.Mine)
+                {
+                    cell.revealed = true;
+                    state[x, y] = cell;
+                }
+            }
+        }
     }
     private void Flood(Cell cell)
     {
@@ -222,6 +269,43 @@ public class Game : MonoBehaviour
         return x >= 0 && x < width && y >= 0 && y <= height;
     }
 
+    private void ifWin()
+    {
+        for(int x = 0; x < width; x++)
+        {
+            for(int y=0;y<height;y++)
+            {
+                Cell cell = state[x, y];
+                if (cell.type != Cell.Type.Mine && !cell.revealed)
+                {
+                    return;
+                }
+            }
+        }
+
+        Debug.Log("你赢了！");
+        Restart.gameObject.SetActive(true);
+        GameOver = true;
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                Cell cell = state[x, y];
+                if (cell.type == Cell.Type.Mine)
+                {
+                    cell.flagged = true;
+                    state[x, y] = cell;
+                }
+            }
+        }
+    }
+    private void RestartGame()
+    {
+        GameOver = false;
+        Restart.gameObject.SetActive(false); // 隐藏按钮
+
+        NewGame();
+    }
 }
 
 
