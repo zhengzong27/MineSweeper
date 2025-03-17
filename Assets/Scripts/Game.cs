@@ -176,15 +176,17 @@ public class Game : MonoBehaviour
     {
         if (cell.revealed) return;
         if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid) return;
+
         cell.revealed = true;
-        state[cell.position.x, cell.position.y] = cell;
+        state[cell.position.x, cell.position.y] = cell; // 若state引用已存在，可删除此行
 
         if (cell.type == Cell.Type.Empty)
         {
+            // 四方向
             Flood(GetCell(cell.position.x - 1, cell.position.y));
-            Flood(GetCell(cell.position.x + 1, cell.position.x));
-            Flood(GetCell(cell.position.x, cell.position.y-1));
-            Flood(GetCell(cell.position.x, cell.position.y+1));
+            Flood(GetCell(cell.position.x + 1, cell.position.y)); // 修正参数为 y
+            Flood(GetCell(cell.position.x, cell.position.y - 1));
+            Flood(GetCell(cell.position.x, cell.position.y + 1));
         }
     }
     private void Flags()
