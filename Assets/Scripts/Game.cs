@@ -83,6 +83,8 @@ public class Game : MonoBehaviour
                     cell.type = Cell.Type.Number;
                 }
                 state[x, y] = cell;
+                //ÏÔÊ¾Êý×Ö
+                //state[x, y].revealed = true;
             }
         }
     }
