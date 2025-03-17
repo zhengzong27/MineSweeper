@@ -132,24 +132,29 @@ public class Game : MonoBehaviour
                     if (isTouching)
                     {
                         touchTime += Time.deltaTime; // 累计触摸时间
-                        if (touchTime > 0.25f) // 长按 1 秒
-                        {
-                            Flags();
-                            Debug.Log("长按操作");
-                            isTouching = false; // 重置状态
-                            return;
-                        }
                     }
                     break;
 
                 case TouchPhase.Ended:
-                    Reveal();
-                    Debug.Log("揭开操作");
-                    isTouching = false;
+                    if (isTouching)
+                    {
+                        if (touchTime > 0.25f) // 长按操作
+                        {
+                            Flags();
+                            Debug.Log("长按操作");
+                        }
+                        else // 点击操作
+                        {
+                            Reveal();
+                            Debug.Log("揭开操作");
+                        }
+                        isTouching = false; // 重置状态
+                    }
                     break;
+
                 case TouchPhase.Canceled:
                     isTouching = false;
-                    Debug.Log("触摸结束");
+                    Debug.Log("触摸取消");
                     break;
             }
         }
@@ -159,7 +164,7 @@ public class Game : MonoBehaviour
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
         Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
-        if (cell.type==Cell.Type.Invalid||cell.revealed||cell.revealed)
+        if (cell.type==Cell.Type.Invalid||cell.revealed||cell.flagged)
         {
             return;
         }
@@ -175,7 +180,7 @@ public class Game : MonoBehaviour
     private void Flood(Cell cell)
     {
         if (cell.revealed) return;
-        if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid) return;
+        if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid||cell.flagged) return;
 
         cell.revealed = true;
         state[cell.position.x, cell.position.y] = cell; // 若state引用已存在，可删除此行
