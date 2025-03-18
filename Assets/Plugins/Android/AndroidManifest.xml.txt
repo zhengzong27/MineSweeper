@@ -1,0 +1,19 @@
+xml version=1.0 encoding=utf-8
+manifest xmlnsandroid=httpschemas.android.comapkresandroid
+    package=com.yourcompany.yourapp
+
+    uses-permission androidname=android.permission.VIBRATE 
+
+    application
+        androidlabel=@stringapp_name
+        androidicon=@mipmapapp_icon
+        activity
+            androidname=com.unity3d.player.UnityPlayerActivity
+            androidlabel=@stringapp_name
+            intent-filter
+                action androidname=android.intent.action.MAIN 
+                category androidname=android.intent.category.LAUNCHER 
+            intent-filter
+        activity
+    application
+manifest
