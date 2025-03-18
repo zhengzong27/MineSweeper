@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class Game : MonoBehaviour
 {
+    private bool isInitialized = false;
+
     public Button Restart;
     private bool GameOver;
     float touchTime = 0f; // 触摸持续时间
@@ -30,12 +32,11 @@ public class Game : MonoBehaviour
     }
     private void NewGame()
     {
+        isInitialized = false; //初始化状态
         GameOver = false;
         Restart.gameObject.SetActive(false);
         state = new Cell[width, height];
-        GenerateCells();
-        GenerateMines();
-        GenerateNumber();
+        GenerateCells();//只生产空白单元格，玩家第一次按下后生成地图
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         board.Draw(state);
     }
@@ -52,51 +53,109 @@ public class Game : MonoBehaviour
             }
         }
     }
-    private void GenerateMines()
+    //private void GenerateMines()
+    //{
+    //    for (int i = 0; i < mineCount; i++)
+    //    {//随机产生
+    //        int x = Random.Range(0, width);
+    //        int y = Random.Range(0, height);
+    //        while (state[x, y].type == Cell.Type.Mine)//如果当前格已有地雷，重新生成
+    //        {
+    //            x++;
+    //            if (x >= width)
+    //            {
+    //                x = 0;
+    //                y++;
+    //                if (y >= height) {
+    //                    y = 0;
+    //                }
+    //            }
+    //        }
+    //        //设置地雷
+    //        state[x, y].type = Cell.Type.Mine;
+    //        //地雷全亮检查生成状态
+    //        //state[x, y].revealed = true;
+    //    }
+    //}
+    //private void GenerateNumber()
+    //{ for (int x = 0; x < width; x++)
+    //    {
+    //        for (int y = 0; y < height; y++)
+    //        {
+    //            Cell cell = state[x, y];
+    //            if (cell.type == Cell.Type.Mine)
+    //            {
+    //                continue;
+    //            }
+    //            cell.Number = CountMines(x, y);
+    //            if (cell.Number > 0)
+    //            {
+    //                cell.type = Cell.Type.Number;
+    //            }
+    //            state[x, y] = cell;
+    //            //显示数字
+    //            //state[x, y].revealed = true;
+    //        }
+    //    }
+    //}
+    private void InitializeWithFirstClick(Vector2Int firstClick)
     {
-        for (int i = 0; i < mineCount; i++)
-        {//随机产生
-            int x = Random.Range(0, width);
-            int y = Random.Range(0, height);
-            while (state[x, y].type == Cell.Type.Mine)//如果当前格已有地雷，重新生成
+        // 步骤1: 创建安全区域
+        HashSet<Vector2Int> forbiddenArea = new HashSet<Vector2Int>();
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
             {
-                x++;
-                if (x >= width)
-                {
-                    x = 0;
-                    y++;
-                    if (y >= height) {
-                        y = 0;
-                    }
-                }
+                int x = Mathf.Clamp(firstClick.x + dx, 0, width - 1);
+                int y = Mathf.Clamp(firstClick.y + dy, 0, height - 1);
+                forbiddenArea.Add(new Vector2Int(x, y));
             }
-            //设置地雷
-            state[x, y].type = Cell.Type.Mine;
-            //地雷全亮检查生成状态
-            //state[x, y].revealed = true;
         }
-    }
-    private void GenerateNumber()
-    { for (int x = 0; x < width; x++)
+
+        // 步骤2: 生成候选位置
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                Cell cell = state[x, y];
-                if (cell.type == Cell.Type.Mine)
+                if (!forbiddenArea.Contains(new Vector2Int(x, y)))
                 {
-                    continue;
+                    candidates.Add(new Vector2Int(x, y));
                 }
-                cell.Number = CountMines(x, y);
-                if (cell.Number > 0)
-                {
-                    cell.type = Cell.Type.Number;
-                }
-                state[x, y] = cell;
-                //显示数字
-                //state[x, y].revealed = true;
             }
         }
+
+        // 步骤3: 随机布雷
+        int mineCount = Mathf.Min(this.mineCount, candidates.Count);
+        System.Random rng = new System.Random();
+        for (int i = 0; i < mineCount; i++)
+        {
+            int index = rng.Next(i, candidates.Count);
+            Vector2Int temp = candidates[i];
+            candidates[i] = candidates[index];
+            candidates[index] = temp;
+
+            Vector2Int pos = candidates[i];
+            state[pos.x, pos.y].type = Cell.Type.Mine;
+        }
+
+        // 步骤4: 计算数字
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (state[x, y].type != Cell.Type.Mine)
+                {
+                    int count = CountMines(x, y);
+                    state[x, y].Number = count;
+                    state[x, y].type = count > 0 ? Cell.Type.Number : Cell.Type.Empty;
+                }
+            }
+        }
+
+        isInitialized = true;
     }
+
     private int CountMines(int cellX, int cellY)
     {
         int count = 0;
@@ -181,6 +240,12 @@ public class Game : MonoBehaviour
         Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
+        if (!isInitialized)
+        {
+            // 首次点击时初始化地图
+            InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
+        }
+
         if (cell.type==Cell.Type.Invalid||cell.revealed||cell.flagged)
         {
             return;
@@ -240,6 +305,7 @@ public class Game : MonoBehaviour
             Flood(GetCell(cell.position.x, cell.position.y - 1));
             Flood(GetCell(cell.position.x, cell.position.y + 1));
         }
+        board.Draw(state);
     }
     private void Flags()
     {
