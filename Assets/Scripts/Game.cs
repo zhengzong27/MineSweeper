@@ -401,6 +401,10 @@ public class Game : MonoBehaviour
         }
         cell.flagged = !cell.flagged;
         state[cellPosition.x, cellPosition.y] = cell;
+        if(cell.flagged)
+        {
+            Handheld.Vibrate();
+        }
         board.Draw(state);
     }
     private Cell GetCell(int x,int y)
