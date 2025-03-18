@@ -363,18 +363,30 @@ public class Game : MonoBehaviour
     private void Flood(Cell cell)
     {
         if (cell.revealed) return;
-        if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid||cell.flagged) return;
+        if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged) return;
 
         cell.revealed = true;
-        state[cell.position.x, cell.position.y] = cell; // 若state引用已存在，可删除此行
+        state[cell.position.x, cell.position.y] = cell;
 
         if (cell.type == Cell.Type.Empty)
         {
-            // 四方向
-            Flood(GetCell(cell.position.x - 1, cell.position.y));
-            Flood(GetCell(cell.position.x + 1, cell.position.y)); // 修正参数为 y
-            Flood(GetCell(cell.position.x, cell.position.y - 1));
-            Flood(GetCell(cell.position.x, cell.position.y + 1));
+            // 八方向递归揭开
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue; // 跳过自身
+
+                    int x = cell.position.x + dx;
+                    int y = cell.position.y + dy;
+
+                    if (IsValid(x, y))
+                    {
+                        Cell neighbor = GetCell(x, y);
+                        Flood(neighbor);
+                    }
+                }
+            }
         }
         board.Draw(state);
     }
