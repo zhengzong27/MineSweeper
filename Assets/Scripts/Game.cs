@@ -246,7 +246,7 @@ public class Game : MonoBehaviour
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
         }
 
-        if (cell.type==Cell.Type.Invalid||cell.revealed||cell.flagged)
+        if (cell.type==Cell.Type.Invalid||cell.flagged)
         {
             return;
         }
@@ -259,14 +259,83 @@ public class Game : MonoBehaviour
                 Flood(cell);
                 ifWin();
                 break;
-            default:
-                cell.revealed = true;
-                state[cellPosition.x, cellPosition.y] = cell;
-                ifWin();
+            case Cell.Type.Number: // 新增快速揭开逻辑
+                Debug.Log("按下数字单元格");
+                if (cell.revealed)
+                {
+                    CheckQuickReveal(cellPosition.x, cellPosition.y);
+                }
+                else
+                {
+                    cell.revealed = true;
+                    state[cellPosition.x, cellPosition.y] = cell;
+                    ifWin();
+                }
                 break;
         }
         board.Draw(state);
 
+    }
+    private void CheckQuickReveal(int x, int y)
+    {
+        Cell centerCell = GetCell(x, y);
+        if (!centerCell.revealed || centerCell.type != Cell.Type.Number)
+            return;
+
+        int flagCount = 0;
+        List<Vector2Int> cellsToReveal = new List<Vector2Int>(); // 存储需要揭开的单元格坐标
+
+        // 统计周围旗子数量和需要揭开的单元格
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                int checkX = x + dx;
+                int checkY = y + dy;
+                if (IsValid(checkX, checkY))
+                {
+                    Cell neighbor = GetCell(checkX, checkY);
+                    if (neighbor.flagged)
+                    {
+                        flagCount++;
+                    }
+                    else if (!neighbor.revealed && !neighbor.flagged)
+                    {
+                        cellsToReveal.Add(new Vector2Int(checkX, checkY)); // 存储坐标而非单元格对象
+                    }
+                }
+            }
+        }
+        // 执行快速揭开条件判断
+        if (flagCount >= centerCell.Number)
+        {
+            foreach (Vector2Int pos in cellsToReveal)
+            {
+                Cell cell = GetCell(pos.x, pos.y); // 通过坐标获取单元格
+                if (cell.type == Cell.Type.Mine)
+                {
+                    Explode(cell);
+                    return;
+                }
+
+                if (!cell.revealed && !cell.flagged)
+                {
+                    if (cell.type == Cell.Type.Empty)
+                    {
+                        Flood(cell);
+                    }
+                    else
+                    {
+                        // 直接修改 state 数组中的数据
+                        state[pos.x, pos.y].revealed = true;
+                    }
+                }
+            }
+            ifWin();
+            board.Draw(state);
+        }
     }
     private void Explode(Cell cell)
     {
