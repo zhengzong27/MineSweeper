@@ -283,7 +283,7 @@ public class Game : MonoBehaviour
             return;
 
         int flagCount = 0;
-        List<Vector2Int> cellsToReveal = new List<Vector2Int>(); // 存储需要揭开的单元格坐标
+        List<Vector2Int> cellsToReveal = new List<Vector2Int>();
 
         // 统计周围旗子数量和需要揭开的单元格
         for (int dx = -1; dx <= 1; dx++)
@@ -294,7 +294,7 @@ public class Game : MonoBehaviour
 
                 int checkX = x + dx;
                 int checkY = y + dy;
-                if (IsValid(checkX, checkY))
+                if (IsValid(checkX, checkY)) // 确保坐标有效
                 {
                     Cell neighbor = GetCell(checkX, checkY);
                     if (neighbor.flagged)
@@ -303,17 +303,20 @@ public class Game : MonoBehaviour
                     }
                     else if (!neighbor.revealed && !neighbor.flagged)
                     {
-                        cellsToReveal.Add(new Vector2Int(checkX, checkY)); // 存储坐标而非单元格对象
+                        cellsToReveal.Add(new Vector2Int(checkX, checkY));
                     }
                 }
             }
         }
+
         // 执行快速揭开条件判断
         if (flagCount >= centerCell.Number)
         {
             foreach (Vector2Int pos in cellsToReveal)
             {
-                Cell cell = GetCell(pos.x, pos.y); // 通过坐标获取单元格
+                if (!IsValid(pos.x, pos.y)) continue; // 再次检查坐标有效性
+
+                Cell cell = GetCell(pos.x, pos.y);
                 if (cell.type == Cell.Type.Mine)
                 {
                     Explode(cell);
@@ -328,8 +331,7 @@ public class Game : MonoBehaviour
                     }
                     else
                     {
-                        // 直接修改 state 数组中的数据
-                        state[pos.x, pos.y].revealed = true;
+                        state[pos.x, pos.y].revealed = true; // 直接修改 state 数组
                     }
                 }
             }
@@ -396,12 +398,12 @@ public class Game : MonoBehaviour
             return state[x, y];
         }
         else {
-            return new Cell();
+            return new Cell { type = Cell.Type.Invalid };
         }
     }
     private bool IsValid(int x,int y)
     {
-        return x >= 0 && x < width && y >= 0 && y <= height;
+        return x >= 0 && x < width && y >= 0 && y < height;
     }
 
     private void ifWin()
