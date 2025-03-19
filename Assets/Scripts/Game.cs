@@ -19,6 +19,8 @@ public class Game : MonoBehaviour
     public int mineCount = 20;
     private Board board;
     private Cell[,] state;
+    private Vector2 initialTouchPosition; // 初始触摸位置
+    private Vector3Int initialCellPosition; // 初始单元格位置
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -206,8 +208,10 @@ public class Game : MonoBehaviour
 
                         if (cell.type != Cell.Type.Invalid && !cell.revealed) // 如果单元格未揭开
                         {
-                            // 允许 Circle 出现
-                            isCircleActive = true;
+                            // 记录初始触摸位置和单元格
+                            initialTouchPosition = TouchPosition;
+                            initialCellPosition = cellPosition;
+                            isCircleActive = true; // 允许 Circle 出现
                             Debug.Log("触摸到未揭开的单元格，允许 Circle 出现");
                         }
                         else // 如果单元格已揭开或无效
@@ -221,8 +225,8 @@ public class Game : MonoBehaviour
                     case TouchPhase.Stationary:
                         if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f) // 触摸时间大于等于 0.25 秒
                         {
-                            // 设置 Circle 的位置
-                            SetCirclePosition(TouchPosition);
+                            // 设置 Circle 的位置（基于初始触摸位置）
+                            SetCirclePosition(initialTouchPosition);
                             // 激活 Circle
                             circle.SetActive(true);
                             Debug.Log("触摸时间大于等于 0.25 秒，Circle 已激活");
@@ -230,11 +234,7 @@ public class Game : MonoBehaviour
                         break;
 
                     case TouchPhase.Moved:
-                        if (isCircleActive) // 如果允许 Circle 出现
-                        {
-                            // 检测滑动方向
-                            DetectSwipe(touch.position);
-                        }
+                        // 在 Circle 出现后，不再更新其位置
                         break;
 
                     case TouchPhase.Ended:
@@ -275,7 +275,7 @@ public class Game : MonoBehaviour
     private void DetectSwipe(Vector2 currentTouchPosition)
     {
         // 计算滑动距离
-        float swipeDistance = currentTouchPosition.y - TouchPosition.y;
+        float swipeDistance = currentTouchPosition.y - initialTouchPosition.y;
 
         // 滑动距离阈值（例如 50 像素）
         float swipeThreshold = 50f;
@@ -285,16 +285,16 @@ public class Game : MonoBehaviour
             if (swipeDistance > 0) // 向上滑动
             {
                 Debug.Log("向上滑动，执行 Flags 方法");
-                Flags();
+                Flags(initialCellPosition); // 作用于初始单元格
             }
             else // 向下滑动
             {
                 Debug.Log("向下滑动，执行 Question 方法");
-                //Question();
+                //Question(initialCellPosition); // 作用于初始单元格
             }
 
             // 重置触摸起始位置，避免重复触发
-            TouchPosition = currentTouchPosition;
+            initialTouchPosition = currentTouchPosition;
         }
     }
     private void Reveal()
@@ -498,22 +498,28 @@ public class Game : MonoBehaviour
         }
         board.Draw(state);
     }
-    private void Flags()
+    private void Flags(Vector3Int cellPosition)
     {
-        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
-        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+        // 获取初始单元格
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+        // 如果单元格无效或已揭开，直接返回
         if (cell.type == Cell.Type.Invalid || cell.revealed)
         {
             return;
         }
+        // 切换标记状态
         cell.flagged = !cell.flagged;
         state[cellPosition.x, cellPosition.y] = cell;
-        if(cell.flagged)
+        // 如果标记成功，触发震动
+        if (cell.flagged)
         {
             Handheld.Vibrate();
         }
+        // 更新棋盘渲染
         board.Draw(state);
+
+        Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
     private Cell GetCell(int x,int y)
     {
