@@ -7,9 +7,10 @@ using UnityEngine.Tilemaps;
 public class Game : MonoBehaviour
 {
     private bool isInitialized = false;
-
+    public GameObject circle; // 拖拽 Circle 的 GameObject 到这里
     public Button Restart;
     private bool GameOver;
+    private bool isCircleActive = false; // Circle 是否已激活isCir
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
     public Vector2 TouchPosition;//按压位置
@@ -18,8 +19,6 @@ public class Game : MonoBehaviour
     public int mineCount = 20;
     private Board board;
     private Cell[,] state;
-    public GameObject circle;
-
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -35,10 +34,7 @@ public class Game : MonoBehaviour
     }
     private void NewGame()
     {
-        if (circle != null)
-        {
-            circle.SetActive(false);
-        }
+        circle.SetActive(false);
         isInitialized = false; //初始化状态
         GameOver = false;
         Restart.gameObject.SetActive(false);
@@ -200,43 +196,105 @@ public class Game : MonoBehaviour
                 {
                     case TouchPhase.Began:
                         isTouching = true;
-                        touchTime = 0f; // 重置计时器
+                        touchTime = Time.time; // 记录触摸开始时间
                         TouchPosition = touch.position;
-                        Debug.Log("触摸开始");
+
+                        // 检测触摸位置对应的单元格是否已揭开
+                        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+                        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+                        Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+                        if (cell.type != Cell.Type.Invalid && !cell.revealed) // 如果单元格未揭开
+                        {
+                            // 允许 Circle 出现
+                            isCircleActive = true;
+                            Debug.Log("触摸到未揭开的单元格，允许 Circle 出现");
+                        }
+                        else // 如果单元格已揭开或无效
+                        {
+                            // 禁止 Circle 出现
+                            isCircleActive = false;
+                            Debug.Log("触摸到已揭开的单元格，禁止 Circle 出现");
+                        }
                         break;
 
                     case TouchPhase.Stationary:
-                        if (isTouching)
+                        if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f) // 触摸时间大于等于 0.25 秒
                         {
-                            touchTime += Time.deltaTime; // 累计触摸时间
+                            // 设置 Circle 的位置
+                            SetCirclePosition(TouchPosition);
+                            // 激活 Circle
+                            circle.SetActive(true);
+                            Debug.Log("触摸时间大于等于 0.25 秒，Circle 已激活");
+                        }
+                        break;
+
+                    case TouchPhase.Moved:
+                        if (isCircleActive) // 如果允许 Circle 出现
+                        {
+                            // 检测滑动方向
+                            DetectSwipe(touch.position);
                         }
                         break;
 
                     case TouchPhase.Ended:
-                        if (isTouching)
+                        circle.SetActive(false);
+                        if (isTouching && Time.time - touchTime < 0.25f)
                         {
-                            if (touchTime > 0.25f) // 长按操作
-                            {
-                                //ShowCircle();
-                                Flags();
-                                Debug.Log("长按操作");
-                            }
-                            else // 点击操作
-                            {
-                                Reveal();
-                                Debug.Log("揭开操作");
-                            }
-                            isTouching = false; // 重置状态
+                            Reveal(); // 点击操作
+                            Debug.Log("揭开操作");
                         }
+                        isTouching = false; // 重置状态
                         break;
 
                     case TouchPhase.Canceled:
                         isTouching = false;
-                        HideCircle();
+                        circle.SetActive(false);
                         Debug.Log("触摸取消");
                         break;
                 }
             }
+        }
+    }
+    private void SetCirclePosition(Vector2 screenPosition)
+    {
+        if (circle != null)
+        {
+            // 将屏幕坐标转换为世界坐标
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                circle.GetComponent<RectTransform>().parent as RectTransform,
+                screenPosition,
+                null,
+                out Vector2 localPosition
+            );
+
+            // 设置 Circle 的位置
+            circle.GetComponent<RectTransform>().localPosition = localPosition;
+        }
+    }
+    private void DetectSwipe(Vector2 currentTouchPosition)
+    {
+        // 计算滑动距离
+        float swipeDistance = currentTouchPosition.y - TouchPosition.y;
+
+        // 滑动距离阈值（例如 50 像素）
+        float swipeThreshold = 50f;
+
+        if (Mathf.Abs(swipeDistance) > swipeThreshold)
+        {
+            if (swipeDistance > 0) // 向上滑动
+            {
+                Debug.Log("向上滑动，执行 Flags 方法");
+                Flags();
+            }
+            else // 向下滑动
+            {
+                Debug.Log("向下滑动，执行 Question 方法");
+                //Question();
+            }
+
+            // 重置触摸起始位置，避免重复触发
+            TouchPosition = currentTouchPosition;
         }
     }
     private void Reveal()
@@ -508,31 +566,6 @@ public class Game : MonoBehaviour
         Restart.gameObject.SetActive(false); // 隐藏按钮
 
         NewGame();
-    }
-    private void ShowCircle()
-    {
-        if (circle != null)
-        {
-            // 将 Circle 设置为显示
-            circle.SetActive(true);
-
-            // 将 Circle 的位置设置为按压位置
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                circle.GetComponent<RectTransform>().parent as RectTransform,
-                TouchPosition,
-                null,
-                out Vector2 localPoint
-            );
-            circle.GetComponent<RectTransform>().localPosition = localPoint;
-        }
-    }
-    private void HideCircle()
-    {
-        if (circle != null)
-        {
-            // 将 Circle 设置为隐藏
-            circle.SetActive(false);
-        }
     }
 }
 
