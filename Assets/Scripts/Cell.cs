@@ -1,19 +1,32 @@
 using UnityEngine;
-
-public struct Cell //单元格类
+using UnityEngine.Tilemaps;
+public struct Cell
 {
-    public enum Type//三种类型
+    public Vector3Int position;
+    public Type type;
+    public int Number;
+    public bool revealed;
+    public bool flagged;
+    public bool exploded;
+    public Tile tile;
+
+    // 添加构造函数
+    public Cell(Vector3Int position, Type type, Tile tile)
+    {
+        this.position = position;
+        this.type = type;
+        this.tile = tile;
+        this.Number = 0; // 默认值
+        this.revealed = false; // 默认值
+        this.flagged = false; // 默认值
+        this.exploded = false; // 默认值
+    }
+
+    public enum Type
     {
         Invalid,
         Empty,
         Mine,
         Number
     }
-    //以下为其属性
-    public Vector3Int position;//位置
-    public Type type;//类型
-    public int Number;//提示值量
-    public bool revealed;//是否揭开
-    public bool flagged;//是否被标记
-    public bool exploded;//是否爆炸
-    }
+}

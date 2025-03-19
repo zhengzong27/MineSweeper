@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Tilemaps;
 
 public class Game : MonoBehaviour
 {
@@ -284,8 +285,9 @@ public class Game : MonoBehaviour
 
         int flagCount = 0;
         List<Vector2Int> cellsToReveal = new List<Vector2Int>();
+        List<Vector2Int> cellsToBlink = new List<Vector2Int>();
 
-        // 统计周围旗子数量和需要揭开的单元格
+        // 统计周围标记的地雷数量和需要揭示的单元格
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -294,7 +296,7 @@ public class Game : MonoBehaviour
 
                 int checkX = x + dx;
                 int checkY = y + dy;
-                if (IsValid(checkX, checkY)) // 确保坐标有效
+                if (IsValid(checkX, checkY))
                 {
                     Cell neighbor = GetCell(checkX, checkY);
                     if (neighbor.flagged)
@@ -304,17 +306,18 @@ public class Game : MonoBehaviour
                     else if (!neighbor.revealed && !neighbor.flagged)
                     {
                         cellsToReveal.Add(new Vector2Int(checkX, checkY));
+                        cellsToBlink.Add(new Vector2Int(checkX, checkY)); // 添加到闪烁列表
                     }
                 }
             }
         }
 
-        // 执行快速揭开条件判断
+        // 快速揭示条件判断
         if (flagCount >= centerCell.Number)
         {
             foreach (Vector2Int pos in cellsToReveal)
             {
-                if (!IsValid(pos.x, pos.y)) continue; // 再次检查坐标有效性
+                if (!IsValid(pos.x, pos.y)) continue;
 
                 Cell cell = GetCell(pos.x, pos.y);
                 if (cell.type == Cell.Type.Mine)
@@ -331,13 +334,56 @@ public class Game : MonoBehaviour
                     }
                     else
                     {
-                        state[pos.x, pos.y].revealed = true; // 直接修改 state 数组
+                        state[pos.x, pos.y].revealed = true;
                     }
                 }
             }
             ifWin();
             board.Draw(state);
         }
+        else
+        {
+            // 快速揭示条件不满足，触发闪烁
+            Debug.Log("快速揭示条件不满足，触发闪烁");
+            StartCoroutine(BlinkCells(cellsToBlink));
+        }
+    }
+
+    private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+    {
+        Debug.Log("开始闪烁");
+        int blinkCount = 2;
+        float blinkDuration = 0.05f;
+
+        // 保存原始 Tile
+        Dictionary<Vector2Int, Tile> originalTiles = new Dictionary<Vector2Int, Tile>();
+        foreach (var pos in cellsToBlink)
+        {
+            originalTiles[pos] = state[pos.x, pos.y].tile; // 保存原始 Tile
+        }
+
+        // 闪烁逻辑
+        for (int i = 0; i < blinkCount; i++)
+        {
+            Debug.Log("设置为红色 Tile");
+            foreach (var pos in cellsToBlink)
+            {
+                Debug.Log("变成红色！！！");
+                state[pos.x, pos.y].tile = board.tileRed; // 替换为红色 Tile
+                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 强制设置 Tile
+            }
+            board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
+            yield return new WaitForSeconds(blinkDuration);
+
+            Debug.Log("恢复原始 Tile");
+            foreach (var pos in cellsToBlink)
+            {
+                state[pos.x, pos.y].tile = originalTiles[pos]; // 恢复为原始 Tile
+            }
+            board.Draw(state); // 更新 Tilemap 渲染
+            yield return new WaitForSeconds(blinkDuration);
+        }
+        Debug.Log("闪烁结束");
     }
     private void Explode(Cell cell)
     {

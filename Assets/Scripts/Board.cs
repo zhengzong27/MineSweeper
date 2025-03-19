@@ -7,6 +7,7 @@ public class Board : MonoBehaviour
 {
     public Tilemap tilemap { get; private set; }
     public Tile tileUnknown;
+    public Tile tileRed;
     public Tile tileEmpty;
     public Tile tileMine;
     public Tile tileExplode;
