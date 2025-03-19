@@ -8,6 +8,12 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
+  - enabled: 1
+    path: Assets/Scenes/BeginScene.unity
+    guid: eccbfedf2e502f2489d7084423baa1dc
+  - enabled: 1
+    path: Assets/Scenes/MineSweeper.unity
+    guid: 6810ba59475f45241adea2af35919f5e
   m_configObjects:
     com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: 97e1dd4d7754c274b8933c67a32d0784, type: 2}
     com.unity.adaptiveperformance.samsung.android.provider_settings: {fileID: 11400000, guid: e37a09d87c533794eb0483433332eb4b, type: 2}

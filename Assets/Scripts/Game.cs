@@ -12,12 +12,14 @@ public class Game : MonoBehaviour
     private bool GameOver;
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
-    public Vector2 TouchPosition;
+    public Vector2 TouchPosition;//按压位置
     public int width = 8;
     public int height = 16;
     public int mineCount = 20;
     private Board board;
     private Cell[,] state;
+    public GameObject circle;
+
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -33,6 +35,10 @@ public class Game : MonoBehaviour
     }
     private void NewGame()
     {
+        if (circle != null)
+        {
+            circle.SetActive(false);
+        }
         isInitialized = false; //初始化状态
         GameOver = false;
         Restart.gameObject.SetActive(false);
@@ -184,10 +190,6 @@ public class Game : MonoBehaviour
     }
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            NewGame();
-        }
         if (!GameOver)
         {
             if (Input.touchCount > 0) // 检查是否有触摸点
@@ -215,6 +217,7 @@ public class Game : MonoBehaviour
                         {
                             if (touchTime > 0.25f) // 长按操作
                             {
+                                //ShowCircle();
                                 Flags();
                                 Debug.Log("长按操作");
                             }
@@ -229,6 +232,7 @@ public class Game : MonoBehaviour
 
                     case TouchPhase.Canceled:
                         isTouching = false;
+                        HideCircle();
                         Debug.Log("触摸取消");
                         break;
                 }
@@ -504,6 +508,31 @@ public class Game : MonoBehaviour
         Restart.gameObject.SetActive(false); // 隐藏按钮
 
         NewGame();
+    }
+    private void ShowCircle()
+    {
+        if (circle != null)
+        {
+            // 将 Circle 设置为显示
+            circle.SetActive(true);
+
+            // 将 Circle 的位置设置为按压位置
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                circle.GetComponent<RectTransform>().parent as RectTransform,
+                TouchPosition,
+                null,
+                out Vector2 localPoint
+            );
+            circle.GetComponent<RectTransform>().localPosition = localPoint;
+        }
+    }
+    private void HideCircle()
+    {
+        if (circle != null)
+        {
+            // 将 Circle 设置为隐藏
+            circle.SetActive(false);
+        }
     }
 }
 
