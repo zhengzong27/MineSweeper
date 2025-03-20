@@ -376,7 +376,7 @@ public class Game : MonoBehaviour
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
         }
 
-        if (cell.type == Cell.Type.Invalid || cell.flagged || cell.questioned) // 如果单元格无效、插旗或标记为问号
+        if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
         {
             return;
         }
@@ -404,6 +404,7 @@ public class Game : MonoBehaviour
                 }
                 break;
         }
+        
         board.Draw(state);
     }
     private void CheckQuickReveal(int x, int y)
