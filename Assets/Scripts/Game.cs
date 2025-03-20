@@ -339,7 +339,20 @@ public class Game : MonoBehaviour
         // 切换问号标记状态
         cell.flagged = false; // 清除插旗状态
         cell.questioned = !cell.questioned; // 切换问号状态
-        state[cellPosition.x, cellPosition.y] = cell;
+                                            // 更新单元格的 Tile
+        if (cell.questioned)
+        {
+            Debug.Log("设置单元格为问号 Tile");
+            cell.tile = board.tileQuestion; // 更新 tile 属性
+            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置 Tilemap 中的 Tile
+        }
+        else
+        {
+            Debug.Log("恢复单元格为未知 Tile");
+            cell.tile = board.tileUnknown; // 更新 tile 属性
+            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 设置 Tilemap 中的 Tile
+        }
+        state[cellPosition.x, cellPosition.y] = cell;// 更新状态数组
 
         // 更新单元格贴图
         if (cell.questioned)
@@ -485,11 +498,19 @@ public class Game : MonoBehaviour
         int blinkCount = 2;
         float blinkDuration = 0.05f;
 
-        // 保存原始 Tile
-        Dictionary<Vector2Int, Tile> originalTiles = new Dictionary<Vector2Int, Tile>();
+        // 保存闪烁前的 Tile
+    Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
         foreach (var pos in cellsToBlink)
         {
-            originalTiles[pos] = state[pos.x, pos.y].tile; // 保存原始 Tile
+            if (state[pos.x, pos.y].tile == null)
+            {
+                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null!");
+            }
+            else
+            {
+                previousTiles[pos] = state[pos.x, pos.y].tile; // 保存原始 Tile
+                Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
+            }
         }
 
         // 闪烁逻辑
@@ -504,11 +525,13 @@ public class Game : MonoBehaviour
             }
             board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
             yield return new WaitForSeconds(blinkDuration);
-
-            Debug.Log("恢复原始 Tile");
+            Debug.Log("恢复成闪烁前的 Tile");
             foreach (var pos in cellsToBlink)
             {
-                state[pos.x, pos.y].tile = originalTiles[pos]; // 恢复为原始 Tile
+                Debug.Log("闪烁后的 Tile: " + state[pos.x, pos.y].tile);
+                state[pos.x, pos.y].tile = previousTiles[pos]; // 恢复成闪烁前的 Tile
+                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), previousTiles[pos]); // 强制设置 Tile
+                board.tilemap.RefreshTile(new Vector3Int(pos.x, pos.y, 0)); // 强制刷新单个 Tile
             }
             board.Draw(state); // 更新 Tilemap 渲染
             yield return new WaitForSeconds(blinkDuration);

@@ -44,10 +44,16 @@ public class Board : MonoBehaviour
         if (cell.revealed)
         {
             return GetRevealedTile(cell);
-        } else if(cell.flagged)
+        }
+        else if (cell.flagged)
         {
             return tileFlag;
-        }else if(cell.exploded)
+        }
+        else if (cell.questioned) // 添加对 questioned 状态的检查
+        {
+            return tileQuestion;
+        }
+        else if (cell.exploded)
         {
             return tileExplode;
         }
