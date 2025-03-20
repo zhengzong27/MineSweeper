@@ -21,6 +21,8 @@ public class Game : MonoBehaviour
     private Cell[,] state;
     private Vector2 initialTouchPosition; // 初始触摸位置
     private Vector3Int initialCellPosition; // 初始单元格位置
+    private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
+    private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -200,6 +202,7 @@ public class Game : MonoBehaviour
                         isTouching = true;
                         touchTime = Time.time; // 记录触摸开始时间
                         TouchPosition = touch.position;
+                        swipeDirection = SwipeDirection.None; // 重置滑动方向
 
                         // 检测触摸位置对应的单元格是否已揭开
                         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
@@ -234,15 +237,27 @@ public class Game : MonoBehaviour
                         break;
 
                     case TouchPhase.Moved:
-                        // 在 Circle 出现后，不再更新其位置
+                        if (isCircleActive && circle.activeSelf) // 如果 Circle 已激活
+                        {
+                            // 检测滑动方向
+                            DetectSwipe(touch.position);
+                        }
                         break;
 
                     case TouchPhase.Ended:
                         circle.SetActive(false);
-                        if (isTouching && Time.time - touchTime < 0.25f)
+                        if (isTouching)
                         {
-                            Reveal(); // 点击操作
-                            Debug.Log("揭开操作");
+                            if (Time.time - touchTime < 0.25f) // 短按操作
+                            {
+                                Reveal(); // 点击操作
+                                Debug.Log("揭开操作");
+                            }
+                            else if (swipeDirection != SwipeDirection.None) // 滑动操作
+                            {
+                                // 根据滑动方向切换单元格状态
+                                HandleSwipeAction();
+                            }
                         }
                         isTouching = false; // 重置状态
                         break;
@@ -284,17 +299,27 @@ public class Game : MonoBehaviour
         {
             if (swipeDistance > 0) // 向上滑动
             {
-                Debug.Log("向上滑动，执行 Flags 方法");
-                Flags(initialCellPosition); // 作用于初始单元格
+                swipeDirection = SwipeDirection.Up;
+                Debug.Log("向上滑动");
             }
             else // 向下滑动
             {
-                Debug.Log("向下滑动，执行 Question 方法");
-                //Question(initialCellPosition); // 作用于初始单元格
+                swipeDirection = SwipeDirection.Down;
+                Debug.Log("向下滑动");
             }
-
-            // 重置触摸起始位置，避免重复触发
-            initialTouchPosition = currentTouchPosition;
+        }
+    }
+    private void HandleSwipeAction()
+    {
+        if (swipeDirection == SwipeDirection.Up) // 上滑插旗
+        {
+            Debug.Log("执行 Flags 方法");
+            Flags(initialCellPosition); // 作用于初始单元格
+        }
+        else if (swipeDirection == SwipeDirection.Down) // 下滑问号
+        {
+            Debug.Log("执行 Question 方法");
+            //Question(initialCellPosition); // 作用于初始单元格
         }
     }
     private void Reveal()
@@ -508,14 +533,17 @@ public class Game : MonoBehaviour
         {
             return;
         }
+
         // 切换标记状态
         cell.flagged = !cell.flagged;
         state[cellPosition.x, cellPosition.y] = cell;
+
         // 如果标记成功，触发震动
         if (cell.flagged)
         {
             Handheld.Vibrate();
         }
+
         // 更新棋盘渲染
         board.Draw(state);
 
