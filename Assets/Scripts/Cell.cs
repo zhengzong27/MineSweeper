@@ -8,6 +8,7 @@ public struct Cell
     public bool revealed;
     public bool flagged;
     public bool exploded;
+    public bool questioned; 
     public Tile tile;
 
     // 添加构造函数
@@ -20,6 +21,7 @@ public struct Cell
         this.revealed = false; // 默认值
         this.flagged = false; // 默认值
         this.exploded = false; // 默认值
+        this.questioned = false;// 默认值
     }
 
     public enum Type

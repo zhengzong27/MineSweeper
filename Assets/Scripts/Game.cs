@@ -319,8 +319,50 @@ public class Game : MonoBehaviour
         else if (swipeDirection == SwipeDirection.Down) // 下滑问号
         {
             Debug.Log("执行 Question 方法");
-            //Question(initialCellPosition); // 作用于初始单元格
+            Question(initialCellPosition); // 作用于初始单元格
         }
+    }
+    private void Question(Vector3Int cellPosition)
+    {
+        Debug.Log("进入 Question 方法");
+
+        // 获取初始单元格
+        Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+        // 如果单元格无效或已揭开，直接返回
+        if (cell.type == Cell.Type.Invalid || cell.revealed)
+        {
+            Debug.Log("单元格无效或已揭开，直接返回");
+            return;
+        }
+
+        // 切换问号标记状态
+        cell.flagged = false; // 清除插旗状态
+        cell.questioned = !cell.questioned; // 切换问号状态
+        state[cellPosition.x, cellPosition.y] = cell;
+
+        // 更新单元格贴图
+        if (cell.questioned)
+        {
+            Debug.Log("设置单元格为问号贴图");
+            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置为问号贴图
+        }
+        else
+        {
+            Debug.Log("恢复单元格为未知贴图");
+            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 恢复为未知贴图
+        }
+
+        // 如果标记成功，触发震动
+        if (cell.questioned)
+        {
+            Handheld.Vibrate();
+        }
+
+        // 强制刷新 Tilemap
+        board.tilemap.RefreshAllTiles();
+
+        Debug.Log("Question 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
     private void Reveal()
     {
@@ -334,10 +376,11 @@ public class Game : MonoBehaviour
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
         }
 
-        if (cell.type==Cell.Type.Invalid||cell.flagged)
+        if (cell.type == Cell.Type.Invalid || cell.flagged || cell.questioned) // 如果单元格无效、插旗或标记为问号
         {
             return;
         }
+
         switch (cell.type)
         {
             case Cell.Type.Mine:
@@ -362,7 +405,6 @@ public class Game : MonoBehaviour
                 break;
         }
         board.Draw(state);
-
     }
     private void CheckQuickReveal(int x, int y)
     {
