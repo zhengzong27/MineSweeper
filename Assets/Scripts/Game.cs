@@ -24,12 +24,9 @@ public class Game : MonoBehaviour
     private Vector3Int initialCellPosition; // 初始单元格位置
     private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
     private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
-<<<<<<< Updated upstream
-    //区块与字典存储优化
     private const int ChunkSize = 8; // 每个区块的大小
     private Dictionary<Vector2Int, bool> loadedChunks = new Dictionary<Vector2Int, bool>(); // 已加载的区块
-    
-=======
+   
                                                                  //块与检查点设置
     private Dictionary<Vector2Int, Cell[,]> initializedBlocks;
     private const int BlockSize = 24; // 一个块的大小
@@ -48,7 +45,6 @@ public class Game : MonoBehaviour
         }
          Debug.Log("State array initialized successfully!");
     }
->>>>>>> Stashed changes
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -237,12 +233,9 @@ public class Game : MonoBehaviour
         isInitialized = false;
         GameOver = false;
         Restart.gameObject.SetActive(false);
-<<<<<<< Updated upstream
         state = new Cell[width, height]; // 确保 state 数组正确初始化
         GenerateCells(); // 只生成空白单元格，玩家第一次按下后生成地图
-=======
         initializedBlocks.Clear(); // 清空已初始化的块
->>>>>>> Stashed changes
         Camera.main.transform.position = new Vector3(0, 0, -10f);
     }
     private void InitializeBlock(Vector2Int blockPosition)
