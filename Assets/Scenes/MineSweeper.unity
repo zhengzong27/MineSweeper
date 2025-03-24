@@ -1098,8 +1098,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1678017744}
   - component: {fileID: 1678017743}
-  - component: {fileID: 1678017746}
   - component: {fileID: 1678017745}
+  - component: {fileID: 1678017746}
   m_Layer: 3
   m_Name: Grid
   m_TagString: Untagged
@@ -1162,9 +1162,9 @@ MonoBehaviour:
   circle: {fileID: 1382330494}
   Restart: {fileID: 1997780251}
   TouchPosition: {x: 0, y: 0}
-  width: 8
-  height: 16
-  mineCount: 20
+  width: 80
+  height: 160
+  mineCount: 240
 --- !u!1 &1997780249
 GameObject:
   m_ObjectHideFlags: 0

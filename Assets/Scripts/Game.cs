@@ -23,6 +23,10 @@ public class Game : MonoBehaviour
     private Vector3Int initialCellPosition; // 初始单元格位置
     private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
     private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
+    //区块与字典存储优化
+    private const int ChunkSize = 8; // 每个区块的大小
+    private Dictionary<Vector2Int, bool> loadedChunks = new Dictionary<Vector2Int, bool>(); // 已加载的区块
+    
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -35,15 +39,171 @@ public class Game : MonoBehaviour
     private void Start()
     {
         NewGame();
+        StartCoroutine(UpdateChunksCoroutine());
+    }
+    private void GenerateCellsInChunk(Vector2Int chunk)
+    {
+        // 检查区块坐标是否合法
+        if (chunk.x < 0 || chunk.y < 0 || chunk.x >= Mathf.CeilToInt((float)width / ChunkSize) || chunk.y >= Mathf.CeilToInt((float)height / ChunkSize))
+        {
+            Debug.LogError($"Invalid chunk coordinates: {chunk}");
+            return;
+        }
+
+        int startX = chunk.x * ChunkSize;
+        int startY = chunk.y * ChunkSize;
+
+        for (int x = startX; x < startX + ChunkSize && x < width; x++)
+        {
+            for (int y = startY; y < startY + ChunkSize && y < height; y++)
+            {
+                if (x >= 0 && x < width && y >= 0 && y < height) // 检查边界
+                {
+                    Cell cell = new Cell();
+                    cell.position = new Vector3Int(x, y, 0);
+                    cell.type = Cell.Type.Empty;
+                    state[x, y] = cell;
+                }
+                else
+                {
+                    Debug.LogError($"Invalid cell coordinates: ({x}, {y})");
+                }
+            }
+        }
+    }
+    private void LoadChunk(Vector2Int chunk)
+    {
+        // 检查区块坐标是否合法
+        if (chunk.x < 0 || chunk.y < 0 || chunk.x >= Mathf.CeilToInt((float)width / ChunkSize) || chunk.y >= Mathf.CeilToInt((float)height / ChunkSize))
+        {
+            Debug.LogError($"Invalid chunk coordinates: {chunk}");
+            return;
+        }
+
+        if (!loadedChunks.ContainsKey(chunk))
+        {
+            GenerateCellsInChunk(chunk);
+            loadedChunks[chunk] = true;
+        }
+    }
+
+    private void UnloadChunk(Vector2Int chunk)
+    {
+        if (loadedChunks.ContainsKey(chunk))
+        {
+            loadedChunks.Remove(chunk);
+            // 如果需要卸载区块，可以在这里释放资源
+        }
+    }
+    private Vector2Int GetChunkFromPosition(Vector3 position)
+    {
+        int chunkX = Mathf.FloorToInt(position.x / ChunkSize);
+        int chunkY = Mathf.FloorToInt(position.y / ChunkSize);
+
+        // 确保区块坐标在合法范围内
+        chunkX = Mathf.Clamp(chunkX, 0, Mathf.CeilToInt((float)width / ChunkSize) - 1);
+        chunkY = Mathf.Clamp(chunkY, 0, Mathf.CeilToInt((float)height / ChunkSize) - 1);
+
+        return new Vector2Int(chunkX, chunkY);
+    }
+    private IEnumerator UpdateChunksCoroutine()
+    {
+        while (!GameOver)
+        {
+            Vector2Int currentChunk = GetChunkFromPosition(Camera.main.transform.position);
+
+            // 加载当前区块和周围区块
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    Vector2Int neighborChunk = new Vector2Int(currentChunk.x + dx, currentChunk.y + dy);
+
+                    // 检查区块坐标是否合法
+                    if (neighborChunk.x >= 0 && neighborChunk.y >= 0 && neighborChunk.x < Mathf.CeilToInt((float)width / ChunkSize) && neighborChunk.y < Mathf.CeilToInt((float)height / ChunkSize))
+                    {
+                        LoadChunk(neighborChunk);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"Skipping invalid chunk: {neighborChunk}");
+                    }
+
+                    yield return null; // 每加载一个区块后等待一帧
+                }
+            }
+
+            // 卸载超出视野范围的区块
+            List<Vector2Int> chunksToUnload = new List<Vector2Int>();
+            foreach (var chunk in loadedChunks.Keys)
+            {
+                if (Mathf.Abs(chunk.x - currentChunk.x) > 1 || Mathf.Abs(chunk.y - currentChunk.y) > 1)
+                {
+                    chunksToUnload.Add(chunk);
+                }
+            }
+
+            foreach (var chunk in chunksToUnload)
+            {
+                UnloadChunk(chunk);
+                yield return null; // 每卸载一个区块后等待一帧
+            }
+
+            yield return null; // 每帧执行一次
+        }
+    }
+
+    private void UpdateChunks()
+    {
+        Debug.Log("Updating chunks...");
+        Vector2Int currentChunk = GetChunkFromPosition(Camera.main.transform.position);
+        Debug.Log($"Current chunk: {currentChunk}");
+
+        // 加载当前区块和周围区块
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                Vector2Int neighborChunk = new Vector2Int(currentChunk.x + dx, currentChunk.y + dy);
+                Debug.Log($"Checking neighbor chunk: {neighborChunk}");
+
+                // 检查区块坐标是否合法
+                if (neighborChunk.x >= 0 && neighborChunk.y >= 0 && neighborChunk.x < Mathf.CeilToInt((float)width / ChunkSize) && neighborChunk.y < Mathf.CeilToInt((float)height / ChunkSize))
+                {
+                    Debug.Log($"Loading chunk: {neighborChunk}");
+                    LoadChunk(neighborChunk);
+                }
+                else
+                {
+                    Debug.LogWarning($"Skipping invalid chunk: {neighborChunk}");
+                }
+            }
+        }
+
+        // 卸载超出视野范围的区块
+        List<Vector2Int> chunksToUnload = new List<Vector2Int>();
+        foreach (var chunk in loadedChunks.Keys)
+        {
+            if (Mathf.Abs(chunk.x - currentChunk.x) > 1 || Mathf.Abs(chunk.y - currentChunk.y) > 1)
+            {
+                chunksToUnload.Add(chunk);
+            }
+        }
+
+        foreach (var chunk in chunksToUnload)
+        {
+            Debug.Log($"Unloading chunk: {chunk}");
+            UnloadChunk(chunk);
+        }
     }
     private void NewGame()
     {
         circle.SetActive(false);
-        isInitialized = false; //初始化状态
+        isInitialized = false;
         GameOver = false;
         Restart.gameObject.SetActive(false);
-        state = new Cell[width, height];
-        GenerateCells();//只生产空白单元格，玩家第一次按下后生成地图
+        state = new Cell[width, height]; // 确保 state 数组正确初始化
+        GenerateCells(); // 只生成空白单元格，玩家第一次按下后生成地图
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         board.Draw(state);
     }
@@ -134,16 +294,18 @@ public class Game : MonoBehaviour
 
         // 步骤3: 随机布雷
         int mineCount = Mathf.Min(this.mineCount, candidates.Count);
-        System.Random rng = new System.Random();
-        for (int i = 0; i < mineCount; i++)
+        for (int i = candidates.Count - 1; i >= 0; i--)
         {
-            int index = rng.Next(i, candidates.Count);
+            int j = Random.Range(0, i + 1);
             Vector2Int temp = candidates[i];
-            candidates[i] = candidates[index];
-            candidates[index] = temp;
+            candidates[i] = candidates[j];
+            candidates[j] = temp;
 
-            Vector2Int pos = candidates[i];
-            state[pos.x, pos.y].type = Cell.Type.Mine;
+            if (i < mineCount)
+            {
+                Vector2Int pos = candidates[i];
+                state[pos.x, pos.y].type = Cell.Type.Mine;
+            }
         }
 
         // 步骤4: 计算数字
@@ -162,7 +324,6 @@ public class Game : MonoBehaviour
 
         isInitialized = true;
     }
-
     private int CountMines(int cellX, int cellY)
     {
         int count = 0;
@@ -189,6 +350,20 @@ public class Game : MonoBehaviour
         return count;
     }
     void Update()
+    {
+        if (!GameOver)
+        {
+            // 优先处理触摸事件
+            if (Input.touchCount > 0)
+            {
+                HandleTouchInput();
+            }
+
+            // 更新区块
+            UpdateChunks();
+        }
+    }
+    private void HandleTouchInput()
     {
         if (!GameOver)
         {
@@ -663,7 +838,7 @@ public class Game : MonoBehaviour
     private void RestartGame()
     {
         GameOver = false;
-        Restart.gameObject.SetActive(false); // 隐藏按钮
+        Restart.gameObject.SetActive(false); // 隐藏按钮,需要动态生成，随着玩家探索而扩展
 
         NewGame();
     }
