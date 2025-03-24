@@ -17,16 +17,38 @@ public class Game : MonoBehaviour
     public int width = 8;
     public int height = 16;
     public int mineCount = 20;
-    private Board board;
-    private Cell[,] state;
+    public Board board;
+    private Tilemap tilemap;
+    private Cell[,] state = new Cell[0, 0];
     private Vector2 initialTouchPosition; // 初始触摸位置
     private Vector3Int initialCellPosition; // 初始单元格位置
     private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
     private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
+<<<<<<< Updated upstream
     //区块与字典存储优化
     private const int ChunkSize = 8; // 每个区块的大小
     private Dictionary<Vector2Int, bool> loadedChunks = new Dictionary<Vector2Int, bool>(); // 已加载的区块
     
+=======
+                                                                 //块与检查点设置
+    private Dictionary<Vector2Int, Cell[,]> initializedBlocks;
+    private const int BlockSize = 24; // 一个块的大小
+    private const int CheckpointSize = 8; // 一个检查点的大小
+    private const int BlocksPerCheckpoint = BlockSize / CheckpointSize; // 一个块包含的检查点数量
+    private void InitializeState(int width, int height)
+    {
+        Debug.Log($"Initializing state with width: {width}, height: {height}");
+        state = new Cell[width, height]; // 初始化 state 数组
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                state[x, y] = new Cell(new Vector3Int(x, y, 0), Cell.Type.Empty, null); // 初始化每个单元格
+            }
+        }
+         Debug.Log("State array initialized successfully!");
+    }
+>>>>>>> Stashed changes
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -38,6 +60,19 @@ public class Game : MonoBehaviour
     }
     private void Start()
     {
+        InitializeState(width,height); // 初始化 state 数组
+        initializedBlocks = new Dictionary<Vector2Int, Cell[,]>(); // 初始化字典
+        if (board == null)
+        {
+            Debug.LogError("board is not assigned in the Inspector!");
+            return;
+        }
+        tilemap = board.GetComponent<Tilemap>(); // 初始化 tilemap
+        if (tilemap == null)
+        {
+            Debug.LogError("Tilemap component not found on board!");
+        }
+
         NewGame();
         StartCoroutine(UpdateChunksCoroutine());
     }
@@ -202,11 +237,48 @@ public class Game : MonoBehaviour
         isInitialized = false;
         GameOver = false;
         Restart.gameObject.SetActive(false);
+<<<<<<< Updated upstream
         state = new Cell[width, height]; // 确保 state 数组正确初始化
         GenerateCells(); // 只生成空白单元格，玩家第一次按下后生成地图
+=======
+        initializedBlocks.Clear(); // 清空已初始化的块
+>>>>>>> Stashed changes
         Camera.main.transform.position = new Vector3(0, 0, -10f);
-        board.Draw(state);
     }
+    private void InitializeBlock(Vector2Int blockPosition)
+    {
+        if (initializedBlocks.ContainsKey(blockPosition))
+            return;
+
+        Cell[,] block = new Cell[BlockSize, BlockSize];
+        for (int x = 0; x < BlockSize; x++)
+        {
+            for (int y = 0; y < BlockSize; y++)
+            {
+                Cell cell = new Cell();
+                cell.position = new Vector3Int(blockPosition.x * BlockSize + x, blockPosition.y * BlockSize + y, 0);
+                cell.type = Cell.Type.Empty;
+                block[x, y] = cell;
+            }
+        }
+        initializedBlocks[blockPosition] = block; // 添加新块到字典
+    }
+    private void InitializeCheckpoint(Vector2Int checkpointPosition)
+    {
+        Debug.Log($"Initializing checkpoint at: {checkpointPosition}");
+        Vector2Int blockPosition = new Vector2Int(checkpointPosition.x / BlocksPerCheckpoint, checkpointPosition.y / BlocksPerCheckpoint);
+        InitializeBlock(blockPosition);
+
+        Vector2Int cellPosition = new Vector2Int(checkpointPosition.x * CheckpointSize, checkpointPosition.y * CheckpointSize);
+        Debug.Log($"Converting checkpoint to cell position: {cellPosition}");
+
+        InitializeWithFirstClick(cellPosition);
+    }
+    private void UpdateBoard()
+    {
+        board.Draw(initializedBlocks); // 传递整个字典
+    }
+
     private void GenerateCells()
     {
         for (int x = 0; x < width; x++)
@@ -216,57 +288,30 @@ public class Game : MonoBehaviour
                 Cell cell = new Cell();
                 cell.position = new Vector3Int(x, y, 0);
                 cell.type = Cell.Type.Empty;
-                state[x, y] = cell;
+                state[x, y] = new Cell(new Vector3Int(x, y, 0), Cell.Type.Empty, null); // 初始化每个单元格
             }
         }
     }
-    //private void GenerateMines()
-    //{
-    //    for (int i = 0; i < mineCount; i++)
-    //    {//随机产生
-    //        int x = Random.Range(0, width);
-    //        int y = Random.Range(0, height);
-    //        while (state[x, y].type == Cell.Type.Mine)//如果当前格已有地雷，重新生成
-    //        {
-    //            x++;
-    //            if (x >= width)
-    //            {
-    //                x = 0;
-    //                y++;
-    //                if (y >= height) {
-    //                    y = 0;
-    //                }
-    //            }
-    //        }
-    //        //设置地雷
-    //        state[x, y].type = Cell.Type.Mine;
-    //        //地雷全亮检查生成状态
-    //        //state[x, y].revealed = true;
-    //    }
-    //}
-    //private void GenerateNumber()
-    //{ for (int x = 0; x < width; x++)
-    //    {
-    //        for (int y = 0; y < height; y++)
-    //        {
-    //            Cell cell = state[x, y];
-    //            if (cell.type == Cell.Type.Mine)
-    //            {
-    //                continue;
-    //            }
-    //            cell.Number = CountMines(x, y);
-    //            if (cell.Number > 0)
-    //            {
-    //                cell.type = Cell.Type.Number;
-    //            }
-    //            state[x, y] = cell;
-    //            //显示数字
-    //            //state[x, y].revealed = true;
-    //        }
-    //    }
-    //}
     private void InitializeWithFirstClick(Vector2Int firstClick)
     {
+        Debug.Log($"Initializing with first click at: {firstClick}");
+        if (initializedBlocks == null)
+        {
+            Debug.LogError("initializedBlocks is null!");
+            return;
+        }
+
+        if (board == null)
+        {
+            Debug.LogError("board is null!");
+            return;
+        }
+
+        if (tilemap == null)
+        {
+            Debug.LogError("tilemap is null!");
+            return;
+        }
         // 步骤1: 创建安全区域
         HashSet<Vector2Int> forbiddenArea = new HashSet<Vector2Int>();
         for (int dx = -1; dx <= 1; dx++)
@@ -370,7 +415,7 @@ public class Game : MonoBehaviour
             if (Input.touchCount > 0) // 检查是否有触摸点
             {
                 Touch touch = Input.GetTouch(0); // 获取第一个触摸点
-
+                Vector3Int cellPosition = Vector3Int.zero; // 提前定义 cellPosition
                 switch (touch.phase)
                 {
                     case TouchPhase.Began:
@@ -379,18 +424,17 @@ public class Game : MonoBehaviour
                         TouchPosition = touch.position;
                         swipeDirection = SwipeDirection.None; // 重置滑动方向
 
-                        // 检测触摸位置对应的单元格是否已揭开
+                        // 将触摸位置转换为世界坐标
                         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
-                        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+                        cellPosition = board.tilemap.WorldToCell(worldPosition); // 赋值
                         Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-                        if (cell.type != Cell.Type.Invalid && !cell.revealed) // 如果单元格未揭开
+                        if (cell.type != Cell.Type.Invalid && !cell.revealed)
                         {
-                            // 记录初始触摸位置和单元格
                             initialTouchPosition = TouchPosition;
                             initialCellPosition = cellPosition;
-                            isCircleActive = true; // 允许 Circle 出现
-                            Debug.Log("触摸到未揭开的单元格，允许 Circle 出现");
+                            Vector2Int checkpointPosition = new Vector2Int(cellPosition.x / CheckpointSize, cellPosition.y / CheckpointSize);
+                            InitializeCheckpoint(checkpointPosition);
                         }
                         else // 如果单元格已揭开或无效
                         {
@@ -398,6 +442,7 @@ public class Game : MonoBehaviour
                             isCircleActive = false;
                             Debug.Log("触摸到已揭开的单元格，禁止 Circle 出现");
                         }
+                        UpdateBoard();
                         break;
 
                     case TouchPhase.Stationary:
@@ -593,7 +638,7 @@ public class Game : MonoBehaviour
                 break;
         }
         
-        board.Draw(state);
+        board.Draw(initializedBlocks);
     }
     private void CheckQuickReveal(int x, int y)
     {
@@ -657,7 +702,7 @@ public class Game : MonoBehaviour
                 }
             }
             ifWin();
-            board.Draw(state);
+            board.Draw(initializedBlocks);
         }
         else
         {
@@ -708,7 +753,7 @@ public class Game : MonoBehaviour
                 board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), previousTiles[pos]); // 强制设置 Tile
                 board.tilemap.RefreshTile(new Vector3Int(pos.x, pos.y, 0)); // 强制刷新单个 Tile
             }
-            board.Draw(state); // 更新 Tilemap 渲染
+            board.Draw(initializedBlocks); // 更新 Tilemap 渲染
             yield return new WaitForSeconds(blinkDuration);
         }
         Debug.Log("闪烁结束");
@@ -762,7 +807,7 @@ public class Game : MonoBehaviour
                 }
             }
         }
-        board.Draw(state);
+        board.Draw(initializedBlocks);
     }
     private void Flags(Vector3Int cellPosition)
     {
@@ -786,19 +831,20 @@ public class Game : MonoBehaviour
         }
 
         // 更新棋盘渲染
-        board.Draw(state);
+        board.Draw(initializedBlocks);
 
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
-    private Cell GetCell(int x,int y)
+    private Cell GetCell(int x, int y)
     {
-        if (IsValid(x, y))
+        Vector2Int blockPosition = new Vector2Int(x / BlockSize, y / BlockSize);
+        if (initializedBlocks.ContainsKey(blockPosition))
         {
-            return state[x, y];
+            int localX = x % BlockSize;
+            int localY = y % BlockSize;
+            return initializedBlocks[blockPosition][localX, localY];
         }
-        else {
-            return new Cell { type = Cell.Type.Invalid };
-        }
+        return new Cell { type = Cell.Type.Invalid };
     }
     private bool IsValid(int x,int y)
     {

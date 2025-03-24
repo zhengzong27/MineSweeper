@@ -1162,9 +1162,16 @@ MonoBehaviour:
   circle: {fileID: 1382330494}
   Restart: {fileID: 1997780251}
   TouchPosition: {x: 0, y: 0}
+<<<<<<< Updated upstream
   width: 80
   height: 160
   mineCount: 240
+=======
+  width: 8
+  height: 16
+  mineCount: 20
+  board: {fileID: 620526487}
+>>>>>>> Stashed changes
 --- !u!1 &1997780249
 GameObject:
   m_ObjectHideFlags: 0

@@ -26,16 +26,19 @@ public class Board : MonoBehaviour
     {
         tilemap = GetComponent<Tilemap>();
     }
-    public void Draw(Cell[,]state)
+    public void Draw(Dictionary<Vector2Int, Cell[,]> initializedBlocks)
     {
-        int width = state.GetLength(0);
-        int height = state.GetLength(1);
-        for(int x=0;x<width;x++)
+        foreach (var block in initializedBlocks.Values)
         {
-            for(int y=0;y<height;y++)
+            int width = block.GetLength(0);
+            int height = block.GetLength(1);
+            for (int x = 0; x < width; x++)
             {
-                Cell cell = state[x, y];
-                tilemap.SetTile(cell.position, GetTile(cell));
+                for (int y = 0; y < height; y++)
+                {
+                    Cell cell = block[x, y];
+                    tilemap.SetTile(cell.position, GetTile(cell));
+                }
             }
         }
     }
