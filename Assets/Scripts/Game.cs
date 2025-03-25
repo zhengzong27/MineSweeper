@@ -1,4 +1,4 @@
-using System.Collections;
+/*using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -60,51 +60,7 @@ public class Game : MonoBehaviour
             }
         }
     }
-    //private void GenerateMines()
-    //{
-    //    for (int i = 0; i < mineCount; i++)
-    //    {//随机产生
-    //        int x = Random.Range(0, width);
-    //        int y = Random.Range(0, height);
-    //        while (state[x, y].type == Cell.Type.Mine)//如果当前格已有地雷，重新生成
-    //        {
-    //            x++;
-    //            if (x >= width)
-    //            {
-    //                x = 0;
-    //                y++;
-    //                if (y >= height) {
-    //                    y = 0;
-    //                }
-    //            }
-    //        }
-    //        //设置地雷
-    //        state[x, y].type = Cell.Type.Mine;
-    //        //地雷全亮检查生成状态
-    //        //state[x, y].revealed = true;
-    //    }
-    //}
-    //private void GenerateNumber()
-    //{ for (int x = 0; x < width; x++)
-    //    {
-    //        for (int y = 0; y < height; y++)
-    //        {
-    //            Cell cell = state[x, y];
-    //            if (cell.type == Cell.Type.Mine)
-    //            {
-    //                continue;
-    //            }
-    //            cell.Number = CountMines(x, y);
-    //            if (cell.Number > 0)
-    //            {
-    //                cell.type = Cell.Type.Number;
-    //            }
-    //            state[x, y] = cell;
-    //            //显示数字
-    //            //state[x, y].revealed = true;
-    //        }
-    //    }
-    //}
+
     private void InitializeWithFirstClick(Vector2Int firstClick)
     {
         // 步骤1: 创建安全区域
@@ -188,7 +144,7 @@ public class Game : MonoBehaviour
         }
         return count;
     }
-    void Update()
+   *//* void Update()
     {
         if (!GameOver)
         {
@@ -270,8 +226,9 @@ public class Game : MonoBehaviour
                 }
             }
         }
-    }
-    private void SetCirclePosition(Vector2 screenPosition)
+    }*/
+
+    /*    private void SetCirclePosition(Vector2 screenPosition)
     {
         if (circle != null)
         {
@@ -286,8 +243,8 @@ public class Game : MonoBehaviour
             // 设置 Circle 的位置
             circle.GetComponent<RectTransform>().localPosition = localPosition;
         }
-    }
-    private void DetectSwipe(Vector2 currentTouchPosition)
+    }*/
+/*private void DetectSwipe(Vector2 currentTouchPosition)
     {
         // 计算滑动距离
         float swipeDistance = currentTouchPosition.y - initialTouchPosition.y;
@@ -308,8 +265,8 @@ public class Game : MonoBehaviour
                 Debug.Log("向下滑动");
             }
         }
-    }
-    private void HandleSwipeAction()
+    }*/
+/*    private void HandleSwipeAction()
     {
         if (swipeDirection == SwipeDirection.Up) // 上滑插旗
         {
@@ -321,352 +278,354 @@ public class Game : MonoBehaviour
             Debug.Log("执行 Question 方法");
             Question(initialCellPosition); // 作用于初始单元格
         }
-    }
-    private void Question(Vector3Int cellPosition)
+    }*/
+/*private void Question(Vector3Int cellPosition)
+{
+    Debug.Log("进入 Question 方法");
+
+    // 获取初始单元格
+    Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+    // 如果单元格无效或已揭开，直接返回
+    if (cell.type == Cell.Type.Invalid || cell.revealed)
     {
-        Debug.Log("进入 Question 方法");
-
-        // 获取初始单元格
-        Cell cell = GetCell(cellPosition.x, cellPosition.y);
-
-        // 如果单元格无效或已揭开，直接返回
-        if (cell.type == Cell.Type.Invalid || cell.revealed)
-        {
-            Debug.Log("单元格无效或已揭开，直接返回");
-            return;
-        }
-
-        // 切换问号标记状态
-        cell.flagged = false; // 清除插旗状态
-        cell.questioned = !cell.questioned; // 切换问号状态
-                                            // 更新单元格的 Tile
-        if (cell.questioned)
-        {
-            Debug.Log("设置单元格为问号 Tile");
-            cell.tile = board.tileQuestion; // 更新 tile 属性
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置 Tilemap 中的 Tile
-        }
-        else
-        {
-            Debug.Log("恢复单元格为未知 Tile");
-            cell.tile = board.tileUnknown; // 更新 tile 属性
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 设置 Tilemap 中的 Tile
-        }
-        state[cellPosition.x, cellPosition.y] = cell;// 更新状态数组
-
-        // 更新单元格贴图
-        if (cell.questioned)
-        {
-            Debug.Log("设置单元格为问号贴图");
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置为问号贴图
-        }
-        else
-        {
-            Debug.Log("恢复单元格为未知贴图");
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 恢复为未知贴图
-        }
-
-        // 如果标记成功，触发震动
-        if (cell.questioned)
-        {
-            Handheld.Vibrate();
-        }
-
-        // 强制刷新 Tilemap
-        board.tilemap.RefreshAllTiles();
-
-        Debug.Log("Question 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
+        Debug.Log("单元格无效或已揭开，直接返回");
+        return;
     }
-    private void Reveal()
+
+    // 切换问号标记状态
+    cell.flagged = false; // 清除插旗状态
+    cell.questioned = !cell.questioned; // 切换问号状态
+                                        // 更新单元格的 Tile
+    if (cell.questioned)
     {
-        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
-        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
-        Cell cell = GetCell(cellPosition.x, cellPosition.y);
-
-        if (!isInitialized)
-        {
-            // 首次点击时初始化地图
-            InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
-        }
-
-        if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
-        {
-            return;
-        }
-
-        switch (cell.type)
-        {
-            case Cell.Type.Mine:
-                Explode(cell);
-                break;
-            case Cell.Type.Empty:
-                Flood(cell);
-                ifWin();
-                break;
-            case Cell.Type.Number: // 新增快速揭开逻辑
-                Debug.Log("按下数字单元格");
-                if (cell.revealed)
-                {
-                    CheckQuickReveal(cellPosition.x, cellPosition.y);
-                }
-                else
-                {
-                    cell.revealed = true;
-                    state[cellPosition.x, cellPosition.y] = cell;
-                    ifWin();
-                }
-                break;
-        }
-        
-        board.Draw(state);
+        Debug.Log("设置单元格为问号 Tile");
+        cell.tile = board.tileQuestion; // 更新 tile 属性
+        board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置 Tilemap 中的 Tile
     }
-    private void CheckQuickReveal(int x, int y)
+    else
     {
-        Cell centerCell = GetCell(x, y);
-        if (!centerCell.revealed || centerCell.type != Cell.Type.Number)
-            return;
-
-        int flagCount = 0;
-        List<Vector2Int> cellsToReveal = new List<Vector2Int>();
-        List<Vector2Int> cellsToBlink = new List<Vector2Int>();
-
-        // 统计周围标记的地雷数量和需要揭示的单元格
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                int checkX = x + dx;
-                int checkY = y + dy;
-                if (IsValid(checkX, checkY))
-                {
-                    Cell neighbor = GetCell(checkX, checkY);
-                    if (neighbor.flagged)
-                    {
-                        flagCount++;
-                    }
-                    else if (!neighbor.revealed && !neighbor.flagged)
-                    {
-                        cellsToReveal.Add(new Vector2Int(checkX, checkY));
-                        cellsToBlink.Add(new Vector2Int(checkX, checkY)); // 添加到闪烁列表
-                    }
-                }
-            }
-        }
-
-        // 快速揭示条件判断
-        if (flagCount >= centerCell.Number)
-        {
-            foreach (Vector2Int pos in cellsToReveal)
-            {
-                if (!IsValid(pos.x, pos.y)) continue;
-
-                Cell cell = GetCell(pos.x, pos.y);
-                if (cell.type == Cell.Type.Mine)
-                {
-                    Explode(cell);
-                    return;
-                }
-
-                if (!cell.revealed && !cell.flagged)
-                {
-                    if (cell.type == Cell.Type.Empty)
-                    {
-                        Flood(cell);
-                    }
-                    else
-                    {
-                        state[pos.x, pos.y].revealed = true;
-                    }
-                }
-            }
-            ifWin();
-            board.Draw(state);
-        }
-        else
-        {
-            // 快速揭示条件不满足，触发闪烁
-            Debug.Log("快速揭示条件不满足，触发闪烁");
-            StartCoroutine(BlinkCells(cellsToBlink));
-        }
+        Debug.Log("恢复单元格为未知 Tile");
+        cell.tile = board.tileUnknown; // 更新 tile 属性
+        board.tilemap.SetTile(cellPosition, board.tileUnknown); // 设置 Tilemap 中的 Tile
     }
+    state[cellPosition.x, cellPosition.y] = cell;// 更新状态数组
 
-    private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+    // 更新单元格贴图
+    if (cell.questioned)
     {
-        Debug.Log("开始闪烁");
-        int blinkCount = 2;
-        float blinkDuration = 0.05f;
-
-        // 保存闪烁前的 Tile
-    Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
-        foreach (var pos in cellsToBlink)
-        {
-            if (state[pos.x, pos.y].tile == null)
-            {
-                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null!");
-            }
-            else
-            {
-                previousTiles[pos] = state[pos.x, pos.y].tile; // 保存原始 Tile
-                Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
-            }
-        }
-
-        // 闪烁逻辑
-        for (int i = 0; i < blinkCount; i++)
-        {
-            Debug.Log("设置为红色 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                Debug.Log("变成红色！！！");
-                state[pos.x, pos.y].tile = board.tileRed; // 替换为红色 Tile
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 强制设置 Tile
-            }
-            board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
-            yield return new WaitForSeconds(blinkDuration);
-            Debug.Log("恢复成闪烁前的 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                Debug.Log("闪烁后的 Tile: " + state[pos.x, pos.y].tile);
-                state[pos.x, pos.y].tile = previousTiles[pos]; // 恢复成闪烁前的 Tile
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), previousTiles[pos]); // 强制设置 Tile
-                board.tilemap.RefreshTile(new Vector3Int(pos.x, pos.y, 0)); // 强制刷新单个 Tile
-            }
-            board.Draw(state); // 更新 Tilemap 渲染
-            yield return new WaitForSeconds(blinkDuration);
-        }
-        Debug.Log("闪烁结束");
+        Debug.Log("设置单元格为问号贴图");
+        board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置为问号贴图
     }
-    private void Explode(Cell cell)
+    else
     {
-        Debug.Log("你输了!");
-        Restart.gameObject.SetActive(true);
-        GameOver = true;
-        cell.revealed = true;
-        cell.exploded = true;
-        state[cell.position.x, cell.position.y] = cell;
-        for (int x = 0; x < width; x++)
-        {
-            for(int y = 0; y < height; y++)
-            {
-                cell = state[x, y];
-                if(cell.type==Cell.Type.Mine)
-                {
-                    cell.revealed = true;
-                    state[x, y] = cell;
-                }
-            }
-        }
+        Debug.Log("恢复单元格为未知贴图");
+        board.tilemap.SetTile(cellPosition, board.tileUnknown); // 恢复为未知贴图
     }
-    private void Flood(Cell cell)
+
+    // 如果标记成功，触发震动
+    if (cell.questioned)
     {
-        if (cell.revealed) return;
-        if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged) return;
-
-        cell.revealed = true;
-        state[cell.position.x, cell.position.y] = cell;
-
-        if (cell.type == Cell.Type.Empty)
-        {
-            // 八方向递归揭开
-            for (int dx = -1; dx <= 1; dx++)
-            {
-                for (int dy = -1; dy <= 1; dy++)
-                {
-                    if (dx == 0 && dy == 0) continue; // 跳过自身
-
-                    int x = cell.position.x + dx;
-                    int y = cell.position.y + dy;
-
-                    if (IsValid(x, y))
-                    {
-                        Cell neighbor = GetCell(x, y);
-                        Flood(neighbor);
-                    }
-                }
-            }
-        }
-        board.Draw(state);
+        Handheld.Vibrate();
     }
-    private void Flags(Vector3Int cellPosition)
-    {
-        // 获取初始单元格
-        Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-        // 如果单元格无效或已揭开，直接返回
-        if (cell.type == Cell.Type.Invalid || cell.revealed)
-        {
-            return;
-        }
+    // 强制刷新 Tilemap
+    board.tilemap.RefreshAllTiles();
 
-        // 切换标记状态
-        cell.flagged = !cell.flagged;
-        state[cellPosition.x, cellPosition.y] = cell;
+    Debug.Log("Question 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
+}*/
+/*  private void Reveal()
+  {
+      Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+      Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+      Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-        // 如果标记成功，触发震动
-        if (cell.flagged)
-        {
-            Handheld.Vibrate();
-        }
+      if (!isInitialized)
+      {
+          // 首次点击时初始化地图
+          InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
+      }
 
-        // 更新棋盘渲染
-        board.Draw(state);
+      if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
+      {
+          return;
+      }
 
-        Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
-    }
-    private Cell GetCell(int x,int y)
+      switch (cell.type)
+      {
+          case Cell.Type.Mine:
+              Explode(cell);
+              break;
+          case Cell.Type.Empty:
+              Flood(cell);
+              ifWin();
+              break;
+          case Cell.Type.Number: // 新增快速揭开逻辑
+              Debug.Log("按下数字单元格");
+              if (cell.revealed)
+              {
+                  CheckQuickReveal(cellPosition.x, cellPosition.y);
+              }
+              else
+              {
+                  cell.revealed = true;
+                  state[cellPosition.x, cellPosition.y] = cell;
+                  ifWin();
+              }
+              break;
+      }
+
+      board.Draw(state);
+  }*//*
+  private void CheckQuickReveal(int x, int y)
+  {
+      Cell centerCell = GetCell(x, y);
+      if (!centerCell.revealed || centerCell.type != Cell.Type.Number)
+          return;
+
+      int flagCount = 0;
+      List<Vector2Int> cellsToReveal = new List<Vector2Int>();
+      List<Vector2Int> cellsToBlink = new List<Vector2Int>();
+
+      // 统计周围标记的地雷数量和需要揭示的单元格
+      for (int dx = -1; dx <= 1; dx++)
+      {
+          for (int dy = -1; dy <= 1; dy++)
+          {
+              if (dx == 0 && dy == 0) continue;
+
+              int checkX = x + dx;
+              int checkY = y + dy;
+              if (IsValid(checkX, checkY))
+              {
+                  Cell neighbor = GetCell(checkX, checkY);
+                  if (neighbor.flagged)
+                  {
+                      flagCount++;
+                  }
+                  else if (!neighbor.revealed && !neighbor.flagged)
+                  {
+                      cellsToReveal.Add(new Vector2Int(checkX, checkY));
+                      cellsToBlink.Add(new Vector2Int(checkX, checkY)); // 添加到闪烁列表
+                  }
+              }
+          }
+      }
+
+      // 快速揭示条件判断
+      if (flagCount >= centerCell.Number)
+      {
+          foreach (Vector2Int pos in cellsToReveal)
+          {
+              if (!IsValid(pos.x, pos.y)) continue;
+
+              Cell cell = GetCell(pos.x, pos.y);
+              if (cell.type == Cell.Type.Mine)
+              {
+                  Explode(cell);
+                  return;
+              }
+
+              if (!cell.revealed && !cell.flagged)
+              {
+                  if (cell.type == Cell.Type.Empty)
+                  {
+                      Flood(cell);
+                  }
+                  else
+                  {
+                      state[pos.x, pos.y].revealed = true;
+                  }
+              }
+          }
+          ifWin();
+          board.Draw(state);
+      }
+      else
+      {
+          // 快速揭示条件不满足，触发闪烁
+          Debug.Log("快速揭示条件不满足，触发闪烁");
+          StartCoroutine(BlinkCells(cellsToBlink));
+      }
+  }
+
+  private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+  {
+      Debug.Log("开始闪烁");
+      int blinkCount = 2;
+      float blinkDuration = 0.05f;
+
+      // 保存闪烁前的 Tile
+      Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
+      foreach (var pos in cellsToBlink)
+      {
+          if (state[pos.x, pos.y].tile == null)
+          {
+              Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null!");
+          }
+          else
+          {
+              previousTiles[pos] = state[pos.x, pos.y].tile; // 保存原始 Tile
+              Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
+          }
+      }
+
+      // 闪烁逻辑
+      for (int i = 0; i < blinkCount; i++)
+      {
+          Debug.Log("设置为红色 Tile");
+          foreach (var pos in cellsToBlink)
+          {
+              Debug.Log("变成红色！！！");
+              state[pos.x, pos.y].tile = board.tileRed; // 替换为红色 Tile
+              board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 强制设置 Tile
+          }
+          board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
+          yield return new WaitForSeconds(blinkDuration);
+          Debug.Log("恢复成闪烁前的 Tile");
+          foreach (var pos in cellsToBlink)
+          {
+              Debug.Log("闪烁后的 Tile: " + state[pos.x, pos.y].tile);
+              state[pos.x, pos.y].tile = previousTiles[pos]; // 恢复成闪烁前的 Tile
+              board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), previousTiles[pos]); // 强制设置 Tile
+              board.tilemap.RefreshTile(new Vector3Int(pos.x, pos.y, 0)); // 强制刷新单个 Tile
+          }
+          board.Draw(state); // 更新 Tilemap 渲染
+          yield return new WaitForSeconds(blinkDuration);
+      }
+      Debug.Log("闪烁结束");
+  }
+  private void Explode(Cell cell)
+  {
+      Debug.Log("你输了!");
+      Restart.gameObject.SetActive(true);
+      GameOver = true;
+      cell.revealed = true;
+      cell.exploded = true;
+      state[cell.position.x, cell.position.y] = cell;
+      for (int x = 0; x < width; x++)
+      {
+          for (int y = 0; y < height; y++)
+          {
+              cell = state[x, y];
+              if (cell.type == Cell.Type.Mine)
+              {
+                  cell.revealed = true;
+                  state[x, y] = cell;
+              }
+          }
+      }
+  }
+  private void Flood(Cell cell)
+  {
+      if (cell.revealed) return;
+      if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged) return;
+
+      cell.revealed = true;
+      state[cell.position.x, cell.position.y] = cell;
+
+      if (cell.type == Cell.Type.Empty)
+      {
+          // 八方向递归揭开
+          for (int dx = -1; dx <= 1; dx++)
+          {
+              for (int dy = -1; dy <= 1; dy++)
+              {
+                  if (dx == 0 && dy == 0) continue; // 跳过自身
+
+                  int x = cell.position.x + dx;
+                  int y = cell.position.y + dy;
+
+                  if (IsValid(x, y))
+                  {
+                      Cell neighbor = GetCell(x, y);
+                      Flood(neighbor);
+                  }
+              }
+          }
+      }
+      board.Draw(state);
+  }
+ *//* private void Flags(Vector3Int cellPosition)
+  {
+      // 获取初始单元格
+      Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+      // 如果单元格无效或已揭开，直接返回
+      if (cell.type == Cell.Type.Invalid || cell.revealed)
+      {
+          return;
+      }
+
+      // 切换标记状态
+      cell.flagged = !cell.flagged;
+      state[cellPosition.x, cellPosition.y] = cell;
+
+      // 如果标记成功，触发震动
+      if (cell.flagged)
+      {
+          Handheld.Vibrate();
+      }
+
+      // 更新棋盘渲染
+      board.Draw(state);
+
+      Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
+  }*/
+/*    private Cell GetCell(int x, int y)
     {
         if (IsValid(x, y))
         {
             return state[x, y];
         }
-        else {
+        else
+        {
             return new Cell { type = Cell.Type.Invalid };
         }
-    }
-    private bool IsValid(int x,int y)
-    {
-        return x >= 0 && x < width && y >= 0 && y < height;
-    }
+    }*/
+/*private bool IsValid(int x, int y)
+{
+    return x >= 0 && x < width && y >= 0 && y < height;
+}
 
-    private void ifWin()
+private void ifWin()
+{
+    for (int x = 0; x < width; x++)
     {
-        for(int x = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
         {
-            for(int y=0;y<height;y++)
+            Cell cell = state[x, y];
+            if (cell.type != Cell.Type.Mine && !cell.revealed)
             {
-                Cell cell = state[x, y];
-                if (cell.type != Cell.Type.Mine && !cell.revealed)
-                {
-                    return;
-                }
-            }
-        }
-
-        Debug.Log("你赢了！");
-        Restart.gameObject.SetActive(true);
-        GameOver = true;
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                Cell cell = state[x, y];
-                if (cell.type == Cell.Type.Mine)
-                {
-                    cell.flagged = true;
-                    state[x, y] = cell;
-                }
+                return;
             }
         }
     }
-    private void RestartGame()
-    {
-        GameOver = false;
-        Restart.gameObject.SetActive(false); // 隐藏按钮
 
-        NewGame();
+    Debug.Log("你赢了！");
+    Restart.gameObject.SetActive(true);
+    GameOver = true;
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = 0; y < height; y++)
+        {
+            Cell cell = state[x, y];
+            if (cell.type == Cell.Type.Mine)
+            {
+                cell.flagged = true;
+                state[x, y] = cell;
+            }
+        }
     }
+}
+private void RestartGame()
+{
+    GameOver = false;
+    Restart.gameObject.SetActive(false); // 隐藏按钮
+
+    NewGame();
+}*//*
 }
 
 
+*/

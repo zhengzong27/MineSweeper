@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -26,19 +25,24 @@ public class Board : MonoBehaviour
     {
         tilemap = GetComponent<Tilemap>();
     }
-    public void Draw(Cell[,]state)
+
+    public void Draw(Cell[,] state)
     {
         int width = state.GetLength(0);
         int height = state.GetLength(1);
-        for(int x=0;x<width;x++)
+        for (int x = 0; x < width; x++)
         {
-            for(int y=0;y<height;y++)
+            for (int y = 0; y < height; y++)
             {
                 Cell cell = state[x, y];
-                tilemap.SetTile(cell.position, GetTile(cell));
+                // 将 Vector2Int 转换为 Vector3Int
+                Vector3Int tilePos = new Vector3Int(cell.position.x, cell.position.y, 0);
+                tilemap.SetTile(tilePos, GetTile(cell));
             }
         }
     }
+
+
     private Tile GetTile(Cell cell)
     {
         if (cell.revealed)
@@ -49,7 +53,7 @@ public class Board : MonoBehaviour
         {
             return tileFlag;
         }
-        else if (cell.questioned) // 添加对 questioned 状态的检查
+        else if (cell.questioned)
         {
             return tileQuestion;
         }
@@ -62,21 +66,23 @@ public class Board : MonoBehaviour
             return tileUnknown;
         }
     }
+
     private Tile GetRevealedTile(Cell cell)
     {
-        switch(cell.type)
+        switch (cell.type)
         {
-            case Cell.Type.Empty:return tileEmpty;
-            case Cell.Type.Mine:return cell.exploded ? tileExplode : tileMine;
-            case Cell.Type.Number:return GetNumberTile(cell);
-            default:return null;
+            case Cell.Type.Empty: return tileEmpty;
+            case Cell.Type.Mine: return cell.exploded ? tileExplode : tileMine;
+            case Cell.Type.Number: return GetNumberTile(cell);
+            default: return null;
         }
     }
+
     private Tile GetNumberTile(Cell cell)
     {
-        switch(cell.Number)
+        switch (cell.Number)
         {
-            case 1:return tileNum1;
+            case 1: return tileNum1;
             case 2: return tileNum2;
             case 3: return tileNum3;
             case 4: return tileNum4;

@@ -1,18 +1,19 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
+
 public struct Cell
 {
-    public Vector3Int position;
+    public Vector2Int position; // 改为 Vector2Int
     public Type type;
     public int Number;
     public bool revealed;
     public bool flagged;
     public bool exploded;
-    public bool questioned; 
+    public bool questioned;
     public Tile tile;
 
-    // 添加构造函数
-    public Cell(Vector3Int position, Type type, Tile tile)
+    // 修改构造函数
+    public Cell(Vector2Int position, Type type, Tile tile)
     {
         this.position = position;
         this.type = type;
@@ -21,7 +22,7 @@ public struct Cell
         this.revealed = false; // 默认值
         this.flagged = false; // 默认值
         this.exploded = false; // 默认值
-        this.questioned = false;// 默认值
+        this.questioned = false; // 默认值
     }
 
     public enum Type
