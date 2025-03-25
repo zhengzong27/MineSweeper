@@ -17,7 +17,7 @@ public struct Cell
     {
         this.position = position;
         this.type = type;
-        this.tile = tile;
+        this.tile = tile;//关联的 Tile 对象，用于在 Tilemap 中渲染单元格
         this.Number = 0; // 默认值
         this.revealed = false; // 默认值
         this.flagged = false; // 默认值
