@@ -1,23 +1,39 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class CameraController : MonoBehaviour
 {
-    public float moveSpeed = 0.01f; // 摄像头移动速度
-    private Vector2 touchStartPos; // 触摸起始位置
-    private bool isDragging = false; // 是否正在拖动
-    private float debugInterval = 1f; // 输出坐标的时间间隔
-    private float debugTimer = 0f; // 计时器
+    public float moveSpeed = 0.01f;
+    private Vector2 touchStartPos;
+    private bool isDragging = false;
+    private float debugInterval = 1f;
+    private float debugTimer = 0f;
+
+    // 地图相关变量
+    public Board board;
+    public int visibleWidth = 10;
+    public int visibleHeight = 10;
+    private Vector3Int lastCameraCellPos;
+
+    // 新增：存储当前可见的格子
+    private HashSet<Vector3Int> currentlyVisibleCells = new HashSet<Vector3Int>();
 
     void Start()
     {
-        // 初始化计时器
         debugTimer = debugInterval;
+        if (board == null)
+        {
+            board = FindObjectOfType<Board>();
+        }
+        lastCameraCellPos = GetCurrentCameraCellPosition();
+        UpdateMapAroundCamera();
     }
 
     void Update()
     {
         HandleTouchInput();
         DebugCameraPosition();
+        CheckCameraMovementForMapUpdate();
     }
 
     void HandleTouchInput()
@@ -25,55 +41,99 @@ public class CameraController : MonoBehaviour
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
-
             switch (touch.phase)
             {
                 case TouchPhase.Began:
-                    // 记录触摸起始位置
                     touchStartPos = touch.position;
                     isDragging = true;
                     break;
-
                 case TouchPhase.Moved:
                     if (isDragging)
                     {
-                        // 计算触摸移动的偏移量
                         Vector2 touchDelta = touch.position - touchStartPos;
-
-                        // 根据偏移量移动摄像头
-                        MoveCamera(touchDelta);
-
-                        // 更新触摸起始位置
+                        transform.position -= new Vector3(touchDelta.x * moveSpeed, touchDelta.y * moveSpeed, 0);
                         touchStartPos = touch.position;
                     }
                     break;
-
                 case TouchPhase.Ended:
                 case TouchPhase.Canceled:
-                    // 结束拖动
                     isDragging = false;
                     break;
             }
         }
     }
 
-    void MoveCamera(Vector2 delta)
-    {
-        // 根据偏移量移动摄像头
-        Vector3 moveDirection = new Vector3(-delta.x, -delta.y, 0) * moveSpeed;
-        transform.Translate(moveDirection, Space.World);
-    }
-
     void DebugCameraPosition()
     {
-        // 计时器更新
         debugTimer -= Time.deltaTime;
-
-        // 如果计时器小于等于0，输出摄像头坐标并重置计时器
         if (debugTimer <= 0f)
         {
-            Debug.Log("Camera Position: " + transform.position);
             debugTimer = debugInterval;
+            Debug.Log("Camera position: " + transform.position);
         }
+    }
+
+    Vector3Int GetCurrentCameraCellPosition()
+    {
+        Vector3 worldPos = transform.position;
+        return board.tilemap.WorldToCell(worldPos);
+    }
+
+    void CheckCameraMovementForMapUpdate()
+    {
+        Vector3Int currentCellPos = GetCurrentCameraCellPosition();
+        if (currentCellPos != lastCameraCellPos)
+        {
+            UpdateMapAroundCamera();
+            lastCameraCellPos = currentCellPos;
+        }
+    }
+
+    // 修改：优化地图更新，卸载视野外的格子
+    void UpdateMapAroundCamera()
+    {
+        Vector3Int cameraCellPos = GetCurrentCameraCellPosition();
+
+        // 计算新的可见区域
+        int startX = cameraCellPos.x - visibleWidth / 2;
+        int endX = cameraCellPos.x + visibleWidth / 2;
+        int startY = cameraCellPos.y - visibleHeight / 2;
+        int endY = cameraCellPos.y + visibleHeight / 2;
+
+        // 存储新的可见格子
+        HashSet<Vector3Int> newVisibleCells = new HashSet<Vector3Int>();
+
+        // 遍历新视野内的所有格子
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                Vector3Int cellPos = new Vector3Int(x, y, 0);
+                newVisibleCells.Add(cellPos);
+            }
+        }
+
+        // 找出不再可见的格子，并卸载
+        HashSet<Vector3Int> cellsToRemove = new HashSet<Vector3Int>(currentlyVisibleCells);
+        cellsToRemove.ExceptWith(newVisibleCells); // 只保留需要移除的格子
+
+        foreach (Vector3Int cell in cellsToRemove)
+        {
+            board.ClearTile(cell); // 调用 Board 的方法卸载格子
+        }
+
+        // 找出新增的格子，并加载
+        HashSet<Vector3Int> cellsToAdd = new HashSet<Vector3Int>(newVisibleCells);
+        cellsToAdd.ExceptWith(currentlyVisibleCells); // 只保留需要新增的格子
+
+        foreach (Vector3Int cell in cellsToAdd)
+        {
+            board.GenerateTile(cell); // 调用 Board 的方法生成格子
+        }
+
+        // 更新当前可见的格子
+        currentlyVisibleCells = newVisibleCells;
+
+        Debug.Log($"Updated map. Visible area: X[{startX},{endX}], Y[{startY},{endY}]");
     }
 }

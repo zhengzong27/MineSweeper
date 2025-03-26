@@ -93,4 +93,16 @@ public class Board : MonoBehaviour
             default: return null;
         }
     }
+    // 生成指定格子的地图
+    public void GenerateTile(Vector3Int cellPos)
+    {
+        // 在这里实现地图生成逻辑（比如随机地形）
+        tilemap.SetTile(cellPos, tileUnknown);
+    }
+
+    // 清除指定格子的地图
+    public void ClearTile(Vector3Int cellPos)
+    {
+        tilemap.SetTile(cellPos, null); // 移除格子
+    }
 }
