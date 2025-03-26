@@ -26,74 +26,61 @@ public class Board : MonoBehaviour
         tilemap = GetComponent<Tilemap>();
     }
 
-    public void Draw(Cell[,] state)
+    public void Draw(Dictionary<Vector2Int, Cell> state)
     {
-        int width = state.GetLength(0);
-        int height = state.GetLength(1);
-        for (int x = 0; x < width; x++)
+
+        foreach (var cell in state.Values)
         {
-            for (int y = 0; y < height; y++)
+            Vector3Int position = new Vector3Int(cell.position.x, cell.position.y, 0);
+
+            if (cell.exploded)
             {
-                Cell cell = state[x, y];
-                // 将 Vector2Int 转换为 Vector3Int
-                Vector3Int tilePos = new Vector3Int(cell.position.x, cell.position.y, 0);
-                tilemap.SetTile(tilePos, GetTile(cell));
+                tilemap.SetTile(position, tileExplode);
+            }
+            else if (cell.flagged)
+            {
+                tilemap.SetTile(position, tileFlag);
+            }
+            else if (cell.questioned)
+            {
+                tilemap.SetTile(position, tileQuestion);
+            }
+            else if (!cell.revealed)
+            {
+                tilemap.SetTile(position, tileUnknown);
+            }
+            else
+            {
+                switch (cell.type)
+                {
+                    case Cell.Type.Empty:
+                        tilemap.SetTile(position, tileEmpty);
+                        break;
+                    case Cell.Type.Mine:
+                        tilemap.SetTile(position, tileMine);
+                        break;
+                    case Cell.Type.Number:
+                        SetNumberTile(position, cell.Number);
+                        break;
+                }
             }
         }
     }
 
-
-    private Tile GetTile(Cell cell)
+    private void SetNumberTile(Vector3Int position, int number)
     {
-        if (cell.revealed)
+        switch (number)
         {
-            return GetRevealedTile(cell);
+            case 1: tilemap.SetTile(position, tileNum1); break;
+            case 2: tilemap.SetTile(position, tileNum2); break;
+            case 3: tilemap.SetTile(position, tileNum3); break;
+            case 4: tilemap.SetTile(position, tileNum4); break;
+            case 5: tilemap.SetTile(position, tileNum5); break;
+            case 6: tilemap.SetTile(position, tileNum6); break;
+            case 7: tilemap.SetTile(position, tileNum7); break;
+            case 8: tilemap.SetTile(position, tileNum8); break;
         }
-        else if (cell.flagged)
-        {
-            return tileFlag;
-        }
-        else if (cell.questioned)
-        {
-            return tileQuestion;
-        }
-        else if (cell.exploded)
-        {
-            return tileExplode;
-        }
-        else
-        {
-            return tileUnknown;
-        }
-    }
-
-    private Tile GetRevealedTile(Cell cell)
-    {
-        switch (cell.type)
-        {
-            case Cell.Type.Empty: return tileEmpty;
-            case Cell.Type.Mine: return cell.exploded ? tileExplode : tileMine;
-            case Cell.Type.Number: return GetNumberTile(cell);
-            default: return null;
-        }
-    }
-
-    private Tile GetNumberTile(Cell cell)
-    {
-        switch (cell.Number)
-        {
-            case 1: return tileNum1;
-            case 2: return tileNum2;
-            case 3: return tileNum3;
-            case 4: return tileNum4;
-            case 5: return tileNum5;
-            case 6: return tileNum6;
-            case 7: return tileNum7;
-            case 8: return tileNum8;
-            default: return null;
-        }
-    }
-    // 生成指定格子的地图
+    }// 生成指定格子的地图
     public void GenerateTile(Vector3Int cellPos)
     {
         // 在这里实现地图生成逻辑（比如随机地形）
@@ -105,4 +92,5 @@ public class Board : MonoBehaviour
     {
         tilemap.SetTile(cellPos, null); // 移除格子
     }
-}
+
+} 

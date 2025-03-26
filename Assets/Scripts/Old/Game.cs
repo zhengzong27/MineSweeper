@@ -546,7 +546,7 @@ public class Game : MonoBehaviour
       }
       board.Draw(state);
   }
- *//* private void Flags(Vector3Int cellPosition)
+ *//*private void Flags(Vector3Int cellPosition)
   {
       // 获取初始单元格
       Cell cell = GetCell(cellPosition.x, cellPosition.y);
@@ -571,8 +571,8 @@ public class Game : MonoBehaviour
       board.Draw(state);
 
       Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
-  }*/
-/*    private Cell GetCell(int x, int y)
+  }
+    private Cell GetCell(int x, int y)
     {
         if (IsValid(x, y))
         {

@@ -77,6 +77,9 @@ public class MinesCreate : MonoBehaviour
 
         minePositions[regionCoord] = mines;//记录雷的位置
     }
-
+    public bool IsMineAt(Vector2Int cellPos)
+    {
+        return ZoneManager.Instance.IsMineAt(cellPos);
+    }
     // 其他原有方法（IsMineAt、GetAdjacentMineCount等）保持不变...
 }
