@@ -69,7 +69,7 @@ public class Sweep : MonoBehaviour
                 }
                 break;
         }
-        ZoneManager.Instance.CheckZoneLockState(cellPos);
+/*        ZoneManager.Instance.CheckZoneLockState(cellPos);*/
         // 更新显示（原board.Draw）
         // board.Draw(cellStates);
     }
@@ -161,99 +161,6 @@ public class Sweep : MonoBehaviour
         
         Debug.Log($"尝试快速揭开: {cellPos}");
     }
-
-    // 辅助方法
-    private bool IsValid(Vector2Int pos)
-    {
-        // 无限地图不需要边界检查
-        return true;
-    }
-    private void CheckQuickReveal(int x, int y)
-    {
-        Vector2Int centerPos = new Vector2Int(x, y);
-
-        // 获取中心单元格（如果不存在则返回）
-        if (!_cellStates.TryGetValue(centerPos, out Cell centerCell) ||
-            !centerCell.revealed ||
-            centerCell.type != Cell.Type.Number)
-        {
-            return;
-        }
-
-        int flagCount = 0;
-        List<Vector2Int> cellsToReveal = new List<Vector2Int>();
-        List<Vector2Int> cellsToBlink = new List<Vector2Int>();
-
-        // 统计周围标记的地雷数量和需要揭示的单元格
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                Vector2Int neighborPos = new Vector2Int(x + dx, y + dy);
-
-                // 获取邻居单元格（如果不存在则创建默认）
-                if (!_cellStates.TryGetValue(neighborPos, out Cell neighbor))
-                {
-                    neighbor = new Cell(neighborPos, Cell.Type.Empty, null);
-                    _cellStates[neighborPos] = neighbor;
-                }
-
-                if (neighbor.flagged)
-                {
-                    flagCount++;
-                }
-                else if (!neighbor.revealed && !neighbor.flagged)
-                {
-                    cellsToReveal.Add(neighborPos);
-                    cellsToBlink.Add(neighborPos);
-                }
-            }
-        }
-
-        // 快速揭示条件判断
-        if (flagCount >= centerCell.Number)
-        {
-            foreach (Vector2Int pos in cellsToReveal)
-            {
-                // 获取或创建单元格
-                if (!_cellStates.TryGetValue(pos, out Cell cell))
-                {
-                    cell = new Cell(pos, Cell.Type.Empty, null);
-                    _cellStates[pos] = cell;
-                }
-
-                if (cell.type == Cell.Type.Mine)
-                {
-                    Explode(cell);
-                    return;
-                }
-
-                if (!cell.revealed && !cell.flagged)
-                {
-                    if (cell.type == Cell.Type.Empty)
-                    {
-                        Flood(cell);
-                    }
-                    else
-                    {
-                        cell.revealed = true;
-                        _cellStates[pos] = cell;
-                    }
-                }
-            }
-            CheckWinCondition();
-            // board.Draw(cellStates);
-        }
-        else
-        {
-            // 快速揭示条件不满足，触发闪烁
-            Debug.Log("快速揭示条件不满足，触发闪烁");
-            StartCoroutine(BlinkCells(cellsToBlink));
-        }
-    }
-
     private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
     {
         Debug.Log("开始闪烁");
@@ -316,4 +223,5 @@ public class Sweep : MonoBehaviour
         // 调用核心揭示逻辑
         Reveal(cellToReveal);
     }
+
 }

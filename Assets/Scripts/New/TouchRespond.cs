@@ -30,6 +30,10 @@ public class TouchRespond : MonoBehaviour
         board = FindObjectOfType<Board>();
     }
 
+    private void Update()
+    {
+        GetTouch();
+    }
     // 获取单元格（兼容字典存储）
     private Cell GetCell(int x, int y)
     {
@@ -39,12 +43,6 @@ public class TouchRespond : MonoBehaviour
             return cell;
         }
         return new Cell(pos, Cell.Type.Invalid, null);
-    }
-
-    // 获取单元格（Vector2Int重载）
-    private Cell GetCell(Vector2Int position)
-    {
-        return GetCell(position.x, position.y);
     }
 
     public void GetTouch()
@@ -107,9 +105,10 @@ public class TouchRespond : MonoBehaviour
     {
         if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f)
         {
-            SetCirclePosition(initialTouchPosition);
+            
+            /*SetCirclePosition(initialTouchPosition);
             circle.SetActive(true);
-            Debug.Log("长按激活Circle");
+            Debug.Log("长按激活Circle");*/
         }
     }
 
