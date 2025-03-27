@@ -22,18 +22,14 @@ public class MinesCreate : MonoBehaviour
 
     private void Awake()
     {
-        //单例初始化
-        if (_instance != null && _instance != this)
-            Destroy(this.gameObject);
-        else
-            _instance = this;
 
-        InitializeRandomSeed();
     }
 
     // 初始化随机种子（动态或固定）
     public void InitializeRandomSeed()
     {
+        bool useDynamicSeed = GameManager.Instance.useDynamicSeed;
+        int fixedSeed = GameManager.Instance.fixedSeed;
         if (useDynamicSeed)// 如果用动态种子
         {
             // 动态种子：结合系统时间、硬件标识和Unity随机数
@@ -57,6 +53,8 @@ public class MinesCreate : MonoBehaviour
     // 为指定区域生成地雷（Fisher-Yates洗牌算法优化版）
     private void GenerateMinesForRegion(Vector2Int regionCoord)
     {
+        int mineCount = GameManager.Instance.MineCount;
+        int regionSize = GameManager.Instance.ZoneSize;
         // 1. 生成区域唯一种子（混合全局种子和区域坐标）
         int regionSeed = (regionCoord.x * 1000 + regionCoord.y) ^ fixedSeed;
         var regionRandom = new System.Random(regionSeed);

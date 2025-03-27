@@ -19,13 +19,26 @@ public class Sweep : MonoBehaviour
     // 临时变量（原TouchPosition）
     private Vector2 touchPosition;
 
-    private void Reveal(Cell cell)
+    private void Awake()
     {
-        // 获取点击位置（原TouchPosition）
+        board = FindObjectOfType<Board>();
+    }
+    public void Reveal(Cell cell)
+    {        // 获取点击位置（原TouchPosition）
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(touchPosition);
         Vector3Int cellPosition = new Vector3Int(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y), 0);
         Vector2Int cellKey = new Vector2Int(cellPosition.x, cellPosition.y);
-        Vector2Int cellPos = new Vector2Int(cellPosition.x, cellPosition.y); // 明确定义 cellPos
+        if (GameManager.Instance.GameOver) return;
+        if(!GameManager.Instance.GameInitialized)
+        {
+            GameManager.Instance.SetGameInitialized(true);
+        }
+        if (!_cellStates.TryGetValue(cellKey, out Cell existingCell))
+        {
+            existingCell = new Cell(cellKey, Cell.Type.Invalid, null);
+            _cellStates[cellKey] = existingCell;
+        }
+
 
         // 获取单元格（如果不存在则创建默认单元格）
         if (!_cellStates.TryGetValue(cellKey, out Cell cellToReveal))
@@ -53,7 +66,7 @@ public class Sweep : MonoBehaviour
                 break;
             case Cell.Type.Empty:
                 Flood(cell);
-                CheckWinCondition();
+                GameManager.Instance.CellRevealed(cellKey);
                 break;
             case Cell.Type.Number:
                 Debug.Log("按下数字单元格");
@@ -65,7 +78,7 @@ public class Sweep : MonoBehaviour
                 {
                     cell.revealed = true;
                     _cellStates[cellKey] = cell;
-                    CheckWinCondition();
+                    GameManager.Instance.CellRevealed(cellKey);
                 }
                 break;
         }
@@ -73,7 +86,19 @@ public class Sweep : MonoBehaviour
         // 更新显示（原board.Draw）
         // board.Draw(cellStates);
     }
+    public void ToggleFlag(Vector2Int cellKey)
+    {
+        if (_cellStates.TryGetValue(cellKey, out Cell cell))
+        {
+            cell.flagged = !cell.flagged;
+            _cellStates[cellKey] = cell;
 
+            // 通知 GameManager 更新标记状态
+            bool isMine = (cell.type == Cell.Type.Mine);
+            GameManager.Instance.FlagPlaced(cellKey, isMine);
+        }
+        board.Draw(_cellStates);
+    }
     private void Explode(Cell cell)
     {
         Debug.Log("你输了!");

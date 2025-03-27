@@ -9,8 +9,8 @@ public class CameraController : MonoBehaviour
     private float debugInterval = 1f;
     private float debugTimer = 0f;
 
-    // 地图相关变量
-    public Board board;
+    // GameManager获取Board
+    private Board board => GameManager.Instance.board;
     public int visibleWidth = 10;
     public int visibleHeight = 10;
     private Vector3Int lastCameraCellPos;
@@ -20,11 +20,8 @@ public class CameraController : MonoBehaviour
 
     void Start()
     {
+        //移除手动查找Board
         debugTimer = debugInterval;
-        if (board == null)
-        {
-            board = FindObjectOfType<Board>();
-        }
         lastCameraCellPos = GetCurrentCameraCellPosition();
         UpdateMapAroundCamera();
     }

@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class ZoneManager : MonoBehaviour
 {
-    public const int ZoneSize = 8; // 每个区块的大小（8x8）
+    public int ZoneSize => GameManager.Instance.ZoneSize;
 
     [Header("Debug Settings")]
     public bool drawZoneGizmos = true;

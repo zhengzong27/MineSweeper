@@ -11,38 +11,36 @@ public class TouchRespond : MonoBehaviour
     private float touchTime = 0f;
     public Vector2 touchPosition;
     private Dictionary<Vector2Int, Cell> cellStates; // 使用字典存储单元格状态
-    
     [Header("UI References")]
-    public GameObject circle; // 引用Circle游戏对象
-    
+    public GameObject circle; // 引用Circle游戏对
     private enum SwipeDirection { None, Up, Down }
     private SwipeDirection swipeDirection = SwipeDirection.None;
     private Vector2 initialTouchPosition;
     private Vector3Int initialCellPosition;
     private bool isCircleActive = false;
-    
-    private Board board;
-    
+    private Board board => GameManager.Instance.board;
+
     private void Awake()
     {
         // 通过公共属性获取字典
-        cellStates = GetComponent<Sweep>().CellStates;
-        board = FindObjectOfType<Board>();
+
     }
 
     private void Update()
     {
-        GetTouch();
+        if (!GameManager.Instance.GameOver) // 修改点3：通过GameManager判断游戏状态
+        {
+            GetTouch();
+        }
     }
     // 获取单元格（兼容字典存储）
     private Cell GetCell(int x, int y)
     {
+        // 修改点5：通过GameManager获取cellStates
         Vector2Int pos = new Vector2Int(x, y);
-        if (cellStates.TryGetValue(pos, out Cell cell))
-        {
-            return cell;
-        }
-        return new Cell(pos, Cell.Type.Invalid, null);
+        return GameManager.Instance.sweep.CellStates.TryGetValue(pos, out Cell cell)
+            ? cell
+            : new Cell(pos, Cell.Type.Invalid, null);
     }
 
     public void GetTouch()
@@ -56,19 +54,19 @@ public class TouchRespond : MonoBehaviour
                 case TouchPhase.Began:
                     HandleTouchBegan(touch);
                     break;
-                    
+
                 case TouchPhase.Stationary:
                     HandleTouchStationary();
                     break;
-                    
+
                 case TouchPhase.Moved:
                     HandleTouchMoved(touch);
                     break;
-                    
+
                 case TouchPhase.Ended:
                     HandleTouchEnded();
                     break;
-                    
+
                 case TouchPhase.Canceled:
                     HandleTouchCanceled();
                     break;
@@ -105,7 +103,7 @@ public class TouchRespond : MonoBehaviour
     {
         if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f)
         {
-            
+
             /*SetCirclePosition(initialTouchPosition);
             circle.SetActive(true);
             Debug.Log("长按激活Circle");*/
@@ -122,7 +120,19 @@ public class TouchRespond : MonoBehaviour
 
     private void HandleTouchEnded()
     {
-        circle.SetActive(false);
+        if (swipeDirection == SwipeDirection.None)
+        {
+            Vector3 worldPos = Camera.main.ScreenToWorldPoint(touchPosition);
+            Vector3Int cellPos = board.tilemap.WorldToCell(worldPos);
+            Vector2Int cellKey = new Vector2Int(cellPos.x, cellPos.y);
+
+            GameManager.Instance.sweep.Reveal(cellKey);
+        }
+        else
+        {
+            GameManager.Instance.sweep.ToggleFlag(initialCellPosition.x, initialCellPosition.y);
+        }
+
         if (isTouching)
         {
             if (Time.time - touchTime < 0.25f)
@@ -137,6 +147,8 @@ public class TouchRespond : MonoBehaviour
             }
         }
         isTouching = false;
+        isCircleActive = false;
+        swipeDirection = SwipeDirection.None;
     }
 
     private void HandleTouchCanceled()
@@ -149,7 +161,7 @@ public class TouchRespond : MonoBehaviour
     private void DetectSwipe(Vector2 currentPosition)
     {
         float swipeDistance = currentPosition.y - initialTouchPosition.y;
-        
+
         if (Mathf.Abs(swipeDistance) > 50f) // 滑动阈值
         {
             swipeDirection = swipeDistance > 0 ? SwipeDirection.Up : SwipeDirection.Down;
@@ -159,7 +171,7 @@ public class TouchRespond : MonoBehaviour
     private void HandleSwipeAction()
     {
         Vector2Int cellPos = new Vector2Int(initialCellPosition.x, initialCellPosition.y);
-        
+
         if (cellStates.TryGetValue(cellPos, out Cell cell))
         {
             // 根据滑动方向切换标记状态
@@ -169,16 +181,16 @@ public class TouchRespond : MonoBehaviour
                     cell.flagged = !cell.flagged;
                     cell.questioned = false;
                     break;
-                    
+
                 case SwipeDirection.Down:
                     cell.questioned = !cell.questioned;
                     cell.flagged = false;
                     break;
             }
-            
+
             cellStates[cellPos] = cell;
             board.Draw(cellStates);
-            
+
             if (cell.flagged)
             {
                 Handheld.Vibrate(); // 标记时震动反馈
