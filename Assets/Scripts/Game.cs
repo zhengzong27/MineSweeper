@@ -36,7 +36,7 @@ public class Game : MonoBehaviour
     {
         NewGame();
     }
-    private void NewGame()
+    private void NewGame()//初始化游戏，调用GenerateCells生成空白单元格
     {
         circle.SetActive(false);
         isInitialized = false; //初始化状态
@@ -59,53 +59,8 @@ public class Game : MonoBehaviour
                 state[x, y] = cell;
             }
         }
-    }
-    //private void GenerateMines()
-    //{
-    //    for (int i = 0; i < mineCount; i++)
-    //    {//随机产生
-    //        int x = Random.Range(0, width);
-    //        int y = Random.Range(0, height);
-    //        while (state[x, y].type == Cell.Type.Mine)//如果当前格已有地雷，重新生成
-    //        {
-    //            x++;
-    //            if (x >= width)
-    //            {
-    //                x = 0;
-    //                y++;
-    //                if (y >= height) {
-    //                    y = 0;
-    //                }
-    //            }
-    //        }
-    //        //设置地雷
-    //        state[x, y].type = Cell.Type.Mine;
-    //        //地雷全亮检查生成状态
-    //        //state[x, y].revealed = true;
-    //    }
-    //}
-    //private void GenerateNumber()
-    //{ for (int x = 0; x < width; x++)
-    //    {
-    //        for (int y = 0; y < height; y++)
-    //        {
-    //            Cell cell = state[x, y];
-    //            if (cell.type == Cell.Type.Mine)
-    //            {
-    //                continue;
-    //            }
-    //            cell.Number = CountMines(x, y);
-    //            if (cell.Number > 0)
-    //            {
-    //                cell.type = Cell.Type.Number;
-    //            }
-    //            state[x, y] = cell;
-    //            //显示数字
-    //            //state[x, y].revealed = true;
-    //        }
-    //    }
-    //}
-    private void InitializeWithFirstClick(Vector2Int firstClick)
+    }//生成空白单元格
+    private void InitializeWithFirstClick(Vector2Int firstClick)//玩家第一次点击逻辑（安全区域、侯选位置、布雷、算提示值）
     {
         // 步骤1: 创建安全区域
         HashSet<Vector2Int> forbiddenArea = new HashSet<Vector2Int>();
@@ -187,11 +142,16 @@ public class Game : MonoBehaviour
             }
         }
         return count;
-    }
+    }//指定单元格相邻八格地雷数
     void Update()
     {
         if (!GameOver)
         {
+            TouchRespond();
+        }
+        }
+    private void TouchRespond()
+    {
             if (Input.touchCount > 0) // 检查是否有触摸点
             {
                 Touch touch = Input.GetTouch(0); // 获取第一个触摸点
@@ -269,8 +229,7 @@ public class Game : MonoBehaviour
                         break;
                 }
             }
-        }
-    }
+    }//点击反馈
     private void SetCirclePosition(Vector2 screenPosition)
     {
         if (circle != null)
@@ -286,7 +245,7 @@ public class Game : MonoBehaviour
             // 设置 Circle 的位置
             circle.GetComponent<RectTransform>().localPosition = localPosition;
         }
-    }
+    }//设置Circle位置
     private void DetectSwipe(Vector2 currentTouchPosition)
     {
         // 计算滑动距离
@@ -308,7 +267,7 @@ public class Game : MonoBehaviour
                 Debug.Log("向下滑动");
             }
         }
-    }
+    }//检测玩家上下滑动
     private void HandleSwipeAction()
     {
         if (swipeDirection == SwipeDirection.Up) // 上滑插旗
@@ -321,7 +280,7 @@ public class Game : MonoBehaviour
             Debug.Log("执行 Question 方法");
             Question(initialCellPosition); // 作用于初始单元格
         }
-    }
+    }//依据滑动方向进行反馈
     private void Question(Vector3Int cellPosition)
     {
         Debug.Log("进入 Question 方法");
@@ -376,7 +335,7 @@ public class Game : MonoBehaviour
         board.tilemap.RefreshAllTiles();
 
         Debug.Log("Question 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
-    }
+    }//问号操作
     private void Reveal()
     {
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
@@ -419,7 +378,7 @@ public class Game : MonoBehaviour
         }
         
         board.Draw(state);
-    }
+    }//揭开操作
     private void CheckQuickReveal(int x, int y)
     {
         Cell centerCell = GetCell(x, y);
@@ -490,7 +449,7 @@ public class Game : MonoBehaviour
             Debug.Log("快速揭示条件不满足，触发闪烁");
             StartCoroutine(BlinkCells(cellsToBlink));
         }
-    }
+    }//判断能否快速揭开
 
     private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
     {
@@ -537,8 +496,8 @@ public class Game : MonoBehaviour
             yield return new WaitForSeconds(blinkDuration);
         }
         Debug.Log("闪烁结束");
-    }
-    private void Explode(Cell cell)
+    }//闪烁
+    private void Explode(Cell cell)//触雷
     {
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
@@ -559,7 +518,7 @@ public class Game : MonoBehaviour
             }
         }
     }
-    private void Flood(Cell cell)
+    private void Flood(Cell cell)//快速揭开
     {
         if (cell.revealed) return;
         if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged) return;
@@ -614,8 +573,8 @@ public class Game : MonoBehaviour
         board.Draw(state);
 
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
-    }
-    private Cell GetCell(int x,int y)
+    }//插旗
+    private Cell GetCell(int x,int y)//获取单元格坐标
     {
         if (IsValid(x, y))
         {
@@ -628,8 +587,7 @@ public class Game : MonoBehaviour
     private bool IsValid(int x,int y)
     {
         return x >= 0 && x < width && y >= 0 && y < height;
-    }
-
+    }//判断是否为边界
     private void ifWin()
     {
         for(int x = 0; x < width; x++)
@@ -659,14 +617,14 @@ public class Game : MonoBehaviour
                 }
             }
         }
-    }
+    }//胜利判断
     private void RestartGame()
     {
         GameOver = false;
         Restart.gameObject.SetActive(false); // 隐藏按钮
 
         NewGame();
-    }
+    }//重新开始
 }
 
 
