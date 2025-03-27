@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-
+using UnityEngine.Tilemaps;
 public class CameraController : MonoBehaviour
 {
     public float moveSpeed = 0.01f;
@@ -10,10 +10,17 @@ public class CameraController : MonoBehaviour
     private float debugTimer = 0f;
 
     // GameManager获取Board
-    private Board board => GameManager.Instance.board;
+    [SerializeField]
+    private Board _board;
+    public Board board
+    {
+        get => _board;
+        set => _board = value;
+    }
     public int visibleWidth = 10;
     public int visibleHeight = 10;
     private Vector3Int lastCameraCellPos;
+    private Tilemap _tilemap;
 
     // 新增：存储当前可见的格子
     private HashSet<Vector3Int> currentlyVisibleCells = new HashSet<Vector3Int>();
@@ -22,10 +29,44 @@ public class CameraController : MonoBehaviour
     {
         //移除手动查找Board
         debugTimer = debugInterval;
+        Invoke("DelayedInitialize", 0.1f);
+        InitializeTilemapReference();
         lastCameraCellPos = GetCurrentCameraCellPosition();
         UpdateMapAroundCamera();
     }
+    private void DelayedInitialize()
+    {
+        InitializeTilemapReference();
+        lastCameraCellPos = GetCurrentCameraCellPosition();
+        UpdateMapAroundCamera();
+    }
+    private void InitializeTilemapReference()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.board != null)
+        {
+            board = GameManager.Instance.board;
+        }
+        else
+        {
+            // 回退方案：尝试查找Board
+            board = FindObjectOfType<Board>();
+        }
+        if (board == null)
+        {
+            board = FindObjectOfType<Board>();
+        }
 
+        if (board != null)
+        {
+            _tilemap = board.tilemap;
+        }
+        else
+        {
+            Debug.LogWarning("Board component not found! Will try again later.");
+            // 延迟重试
+            Invoke("InitializeTilemapReference", 0.5f);
+        }
+    }
     void Update()
     {
         HandleTouchInput();
@@ -72,6 +113,15 @@ public class CameraController : MonoBehaviour
 
     Vector3Int GetCurrentCameraCellPosition()
     {
+        if (_tilemap == null)
+        {
+            InitializeTilemapReference();
+            if (_tilemap == null) // 如果仍然为null
+            {
+                Debug.LogWarning("Tilemap reference is missing, returning zero position");
+                return Vector3Int.zero;
+            }
+        }
         Vector3 worldPos = transform.position;
         return board.tilemap.WorldToCell(worldPos);
     }

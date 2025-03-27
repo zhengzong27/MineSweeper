@@ -40,10 +40,8 @@ public class ZoneClickDetector : MonoBehaviour
         );
 
         Vector3 center = new Vector3(
-            currentZone.x * ZoneManager.ZoneSize + ZoneManager.ZoneSize / 2f,
-            currentZone.y * ZoneManager.ZoneSize + ZoneManager.ZoneSize / 2f,
-            0
-        );
-        Gizmos.DrawWireCube(center, new Vector3(ZoneManager.ZoneSize, ZoneManager.ZoneSize, 0.1f));
+    currentZone.x * ZoneManager.Instance.ZoneSize + ZoneManager.Instance.ZoneSize / 2f,
+    currentZone.y * ZoneManager.Instance.ZoneSize + ZoneManager.Instance.ZoneSize / 2f,0);
+        Gizmos.DrawWireCube(center, new Vector3(ZoneManager.Instance.ZoneSize, ZoneManager.Instance.ZoneSize, 0.1f));
     }
 }

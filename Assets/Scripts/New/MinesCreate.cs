@@ -15,32 +15,47 @@ public class MinesCreate : MonoBehaviour
 
     [Header("种子设置")]
     [SerializeField] private bool useDynamicSeed = true; // 是否使用动态种子
-    [SerializeField] private int fixedSeed = 12345;      // 固定种子（useDynamicSeed=false时生效）
+    private int _currentSeed;     // 固定种子（useDynamicSeed=false时生效）
 
     private Dictionary<Vector2Int, List<Vector2Int>> minePositions = new Dictionary<Vector2Int, List<Vector2Int>>();
     private System.Random random;
 
     private void Awake()
     {
+        // 单例初始化
+        if (_instance != null && _instance != this)
+        {
+            Destroy(this); // 只销毁组件而不是整个游戏对象
+            return;
+        }
+        else
+        {
+            _instance = this;
+            DontDestroyOnLoad(gameObject); // 如果需要持久化
+        }
 
+        InitializeRandomSeed();
     }
 
     // 初始化随机种子（动态或固定）
     public void InitializeRandomSeed()
     {
-        bool useDynamicSeed = GameManager.Instance.useDynamicSeed;
-        int fixedSeed = GameManager.Instance.fixedSeed;
-        if (useDynamicSeed)// 如果用动态种子
+        if (useDynamicSeed)
         {
             // 动态种子：结合系统时间、硬件标识和Unity随机数
-            int timeSeed = DateTime.Now.Millisecond;// 取当前时间的毫秒
-            int deviceSeed = SystemInfo.deviceUniqueIdentifier.GetHashCode();// 取设备唯一ID
-            int unityRandomSeed = UnityEngine.Random.Range(0, int.MaxValue);// 再取一个随机数
-            fixedSeed = timeSeed ^ deviceSeed ^ unityRandomSeed; // 混合这三个数
+            int timeSeed = DateTime.Now.Millisecond;
+            int deviceSeed = SystemInfo.deviceUniqueIdentifier.GetHashCode();
+            int unityRandomSeed = UnityEngine.Random.Range(0, int.MaxValue);
+            _currentSeed = timeSeed ^ deviceSeed ^ unityRandomSeed;
+        }
+        else
+        {
+            // 从GameManager获取固定种子
+            _currentSeed = GameManager.Instance.GetFixedSeed();
         }
 
-        random = new System.Random(fixedSeed); // 用最终种子创建随机数生成器
-        Debug.Log($"当前游戏种子: {fixedSeed} ({(useDynamicSeed ? "动态生成" : "固定")})");
+        random = new System.Random(_currentSeed);
+        Debug.Log($"当前游戏种子: {_currentSeed} ({(useDynamicSeed ? "动态生成" : "固定")})");
     }
 
     // 重新生成所有地雷（切换种子时调用）
@@ -56,7 +71,7 @@ public class MinesCreate : MonoBehaviour
         int mineCount = GameManager.Instance.MineCount;
         int regionSize = GameManager.Instance.ZoneSize;
         // 1. 生成区域唯一种子（混合全局种子和区域坐标）
-        int regionSeed = (regionCoord.x * 1000 + regionCoord.y) ^ fixedSeed;
+        int regionSeed = (regionCoord.x * 1000 + regionCoord.y) ^ _currentSeed;
         var regionRandom = new System.Random(regionSeed);
 
         // 2. 预生成所有候选位置

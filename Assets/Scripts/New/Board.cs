@@ -4,7 +4,17 @@ using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
-    public Tilemap tilemap { get; private set; }
+    public Tilemap tilemap
+    {
+        get
+        {
+            if (_tilemap == null)
+                _tilemap = GetComponent<Tilemap>();
+            return _tilemap;
+        }
+        private set => _tilemap = value;
+    }
+    private Tilemap _tilemap;
     public Tile tileUnknown;
     public Tile tileQuestion;
     public Tile tileRed;

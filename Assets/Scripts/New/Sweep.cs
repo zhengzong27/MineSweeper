@@ -23,68 +23,61 @@ public class Sweep : MonoBehaviour
     {
         board = FindObjectOfType<Board>();
     }
-    public void Reveal(Cell cell)
-    {        // 获取点击位置（原TouchPosition）
-        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(touchPosition);
-        Vector3Int cellPosition = new Vector3Int(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y), 0);
-        Vector2Int cellKey = new Vector2Int(cellPosition.x, cellPosition.y);
-        if (GameManager.Instance.GameOver) return;
-        if(!GameManager.Instance.GameInitialized)
+    public void Reveal(Vector2Int cellKey)
+    {
+        if (GameManager.Instance.sweep.CellStates.TryGetValue(cellKey, out Cell cell))
         {
-            GameManager.Instance.SetGameInitialized(true);
-        }
-        if (!_cellStates.TryGetValue(cellKey, out Cell existingCell))
-        {
-            existingCell = new Cell(cellKey, Cell.Type.Invalid, null);
-            _cellStates[cellKey] = existingCell;
-        }
+            if (!_cellStates.TryGetValue(cellKey, out Cell existingCell))
+            {
+                existingCell = new Cell(cellKey, Cell.Type.Invalid, null);
+                _cellStates[cellKey] = existingCell;
+            }
+            // 获取点击位置（原TouchPosition）
+            Vector2 worldPosition = Camera.main.ScreenToWorldPoint(touchPosition);
+            Vector3Int cellPosition = new Vector3Int(Mathf.FloorToInt(worldPosition.x), Mathf.FloorToInt(worldPosition.y), 0);
+            if (GameManager.Instance.GameOver) return;
+            if (!GameManager.Instance.GameInitialized)
+            {
+                GameManager.Instance.SetGameInitialized(true);
+            }
+            if (!isInitialized)
+            {
+                // 首次点击时初始化地图
+                InitializeWithFirstClick(cellKey);
+                isInitialized = true;
+            }
 
-
-        // 获取单元格（如果不存在则创建默认单元格）
-        if (!_cellStates.TryGetValue(cellKey, out Cell cellToReveal))
-        {
-            cell = new Cell(cellKey, Cell.Type.Invalid, null);
-            _cellStates[cellKey] = cell;
-        }
-
-        if (!isInitialized)
-        {
-            // 首次点击时初始化地图
-            InitializeWithFirstClick(cellKey);
-            isInitialized = true;
-        }
-
-        if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
-        {
-            return;
-        }
-
-        switch (cell.type)
-        {
-            case Cell.Type.Mine:
-                Explode(cell);
-                break;
-            case Cell.Type.Empty:
-                Flood(cell);
-                GameManager.Instance.CellRevealed(cellKey);
-                break;
-            case Cell.Type.Number:
-                Debug.Log("按下数字单元格");
-                if (cell.revealed)
-                {
-                    CheckQuickReveal(cellKey);
-                }
-                else
-                {
-                    cell.revealed = true;
-                    _cellStates[cellKey] = cell;
+            if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
+            {
+                return;
+            }
+            switch (cell.type)
+            {
+                case Cell.Type.Mine:
+                    Explode(cell);
+                    break;
+                case Cell.Type.Empty:
+                    Flood(cell);
                     GameManager.Instance.CellRevealed(cellKey);
-                }
-                break;
+                    break;
+                case Cell.Type.Number:
+                    Debug.Log("按下数字单元格");
+                    if (cell.revealed)
+                    {
+                        CheckQuickReveal(cellKey);
+                    }
+                    else
+                    {
+                        cell.revealed = true;
+                        _cellStates[cellKey] = cell;
+                        GameManager.Instance.CellRevealed(cellKey);
+                    }
+                    break;
+            }
+            /*        ZoneManager.Instance.CheckZoneLockState(cellPos);*/
+            // 更新显示（原board.Draw）
+            // board.Draw(cellStates);
         }
-/*        ZoneManager.Instance.CheckZoneLockState(cellPos);*/
-        // 更新显示（原board.Draw）
-        // board.Draw(cellStates);
     }
     public void ToggleFlag(Vector2Int cellKey)
     {
@@ -246,7 +239,7 @@ public class Sweep : MonoBehaviour
         }
 
         // 调用核心揭示逻辑
-        Reveal(cellToReveal);
+        Reveal(pos);
     }
 
 }

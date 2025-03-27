@@ -73,7 +73,6 @@
     <Compile Include="Assets\Scripts\Old\StartGame.cs" />
     <Compile Include="Assets\Scripts\Old\MapManager.cs" />
     <Compile Include="Assets\Scripts\New\Sweep.cs" />
-    <Compile Include="Assets\Scripts\New\CreateMap.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\TMP_TextSelector_A.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\Benchmark01_UGUI.cs" />
     <Compile Include="Assets\TextMesh Pro\Examples &amp; Extras\Scripts\SimpleScript.cs" />

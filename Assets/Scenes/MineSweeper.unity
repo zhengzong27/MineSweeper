@@ -418,6 +418,9 @@ GameObject:
   - component: {fileID: 722327002}
   - component: {fileID: 722327001}
   - component: {fileID: 722327004}
+  - component: {fileID: 722327006}
+  - component: {fileID: 722327005}
+  - component: {fileID: 722327007}
   m_Layer: 0
   m_Name: Grid
   m_TagString: Untagged
@@ -468,7 +471,46 @@ MonoBehaviour:
   mineCount: 10
   regionSize: 8
   useDynamicSeed: 1
-  fixedSeed: 12345
+--- !u!114 &722327005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722327000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e733e0776be4a24589ee3631e8c95a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  touchPosition: {x: 0, y: 0}
+--- !u!114 &722327006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722327000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ed95894fd551dc48a032fa7758dea56, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &722327007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 722327000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62a3de47cde65f441ab01d890af5d353, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mineCount: 10
+  regionSize: 8
+  useDynamicSeed: 1
 --- !u!1 &879534574
 GameObject:
   m_ObjectHideFlags: 0
@@ -732,7 +774,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!223 &1232601574
 Canvas:
   m_ObjectHideFlags: 0
@@ -868,7 +910,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1382330495
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1031,7 +1073,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 0.01
-  board: {fileID: 918386489}
+  _board: {fileID: 918386489}
   visibleWidth: 24
   visibleHeight: 24
 --- !u!1 &1586533220
@@ -1045,6 +1087,7 @@ GameObject:
   - component: {fileID: 1586533222}
   - component: {fileID: 1586533221}
   - component: {fileID: 1586533223}
+  - component: {fileID: 1586533224}
   m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
@@ -1095,6 +1138,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drawZoneGizmos: 1
   zoneGizmoColor: {r: 1, g: 0.9345836, b: 0.0047169924, a: 0.3}
+--- !u!114 &1586533224
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1586533220}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b15c1c1bfe184114cb7021eb66d6d7b0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _useDynamicSeed: 1
+  _fixedSeed: 12345
+  _mineCount: 10
+  _zoneSize: 8
+  board: {fileID: 918386489}
+  sweep: {fileID: 722327006}
+  touchRespond: {fileID: 722327005}
+  cameraController: {fileID: 1439466343}
+  minesCreate: {fileID: 722327004}
+  zoneManager: {fileID: 1586533223}
 --- !u!1 &1608041392
 GameObject:
   m_ObjectHideFlags: 0

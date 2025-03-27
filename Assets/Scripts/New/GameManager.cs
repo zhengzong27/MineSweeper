@@ -5,6 +5,8 @@ using UnityEngine.Tilemaps;
 public class GameManager : MonoBehaviour
 {
     [Header("Seed Settings")]
+    [SerializeField] private bool _useDynamicSeed = true;
+    [SerializeField] private int _fixedSeed = 12345;
     #region Singleton
     private static GameManager _instance;
     public static GameManager Instance
@@ -41,6 +43,12 @@ public class GameManager : MonoBehaviour
         {
             _instance = this;
             DontDestroyOnLoad(gameObject);
+            board = FindObjectOfType<Board>();
+            sweep = FindObjectOfType<Sweep>();
+            touchRespond = FindObjectOfType<TouchRespond>();
+            cameraController = FindObjectOfType<CameraController>();
+            minesCreate = FindObjectOfType<MinesCreate>();
+            zoneManager = FindObjectOfType<ZoneManager>();
             Initialize();
         }
         minesCreate.InitializeRandomSeed();
@@ -51,8 +59,7 @@ public class GameManager : MonoBehaviour
     [Header("Game Settings")]
     [SerializeField] private int _mineCount = 10;
     [SerializeField] private int _zoneSize = 8;
-    [SerializeField] private bool _useDynamicSeed = true;
-    [SerializeField] private int _fixedSeed = 12345;
+
 
     [Header("References")]
     public Board board;
@@ -66,13 +73,20 @@ public class GameManager : MonoBehaviour
     private bool _gameInitialized = false;
     private int _revealedCellsCount = 0;
     private int _flaggedMinesCount = 0;
+    public int GetFixedSeed()
+    {
+        return _fixedSeed;
+    }
     public int FixedSeed
     {
         get => _fixedSeed;
         set
         {
-            _fixedSeed = value;
-            minesCreate?.InitializeRandomSeed(); // 种子变化时重新初始化
+            if (_fixedSeed != value)
+            {
+                _fixedSeed = value;
+                // 可选：在这里通知其他系统种子已更改
+            }
         }
     }
 
@@ -81,15 +95,7 @@ public class GameManager : MonoBehaviour
     public bool GameOver => _gameOver;
     public bool GameInitialized => _gameInitialized;
 
-    public bool UseDynamicSeed
-    {
-        get => _useDynamicSeed;
-        set
-        {
-            _useDynamicSeed = value;
-            minesCreate?.InitializeRandomSeed(); // 种子变化时重新初始化
-        }
-    }
+    public bool UseDynamicSeed => _useDynamicSeed;
     #endregion
 
     #region Initialization

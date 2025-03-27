@@ -11,33 +11,40 @@ public class TouchRespond : MonoBehaviour
     private float touchTime = 0f;
     public Vector2 touchPosition;
     private Dictionary<Vector2Int, Cell> cellStates; // 使用字典存储单元格状态
-    [Header("UI References")]
-    public GameObject circle; // 引用Circle游戏对
     private enum SwipeDirection { None, Up, Down }
     private SwipeDirection swipeDirection = SwipeDirection.None;
     private Vector2 initialTouchPosition;
     private Vector3Int initialCellPosition;
-    private bool isCircleActive = false;
     private Board board => GameManager.Instance.board;
 
     private void Awake()
     {
         // 通过公共属性获取字典
-
     }
 
     private void Update()
     {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("GameManager.Instance is null!");
+            return;
+        }
         if (!GameManager.Instance.GameOver) // 修改点3：通过GameManager判断游戏状态
         {
             GetTouch();
         }
     }
+
     // 获取单元格（兼容字典存储）
     private Cell GetCell(int x, int y)
     {
         // 修改点5：通过GameManager获取cellStates
-        Vector2Int pos = new Vector2Int(x, y);
+        Vector2Int pos = new Vector2Int(x, y); 
+        if (board == null)
+        {
+            Debug.LogError("Board is null!");
+            return new Cell(pos, Cell.Type.Invalid, null);
+        }
         return GameManager.Instance.sweep.CellStates.TryGetValue(pos, out Cell cell)
             ? cell
             : new Cell(pos, Cell.Type.Invalid, null);
@@ -89,32 +96,21 @@ public class TouchRespond : MonoBehaviour
         {
             initialTouchPosition = touchPosition;
             initialCellPosition = cellPosition;
-            isCircleActive = true;
-            Debug.Log("触摸到未揭开的单元格，允许Circle出现");
-        }
-        else
-        {
-            isCircleActive = false;
-            Debug.Log("触摸到已揭开的单元格，禁止Circle出现");
         }
     }
 
     private void HandleTouchStationary()
     {
-        if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f)
-        {
-
-            /*SetCirclePosition(initialTouchPosition);
-            circle.SetActive(true);
-            Debug.Log("长按激活Circle");*/
-        }
+        // No circle-related functionality remains
     }
 
     private void HandleTouchMoved(Touch touch)
     {
-        if (isCircleActive && circle.activeSelf)
+        float swipeDistance = touch.position.y - initialTouchPosition.y;
+
+        if (Mathf.Abs(swipeDistance) > 50f) // 滑动阈值
         {
-            DetectSwipe(touch.position);
+            swipeDirection = swipeDistance > 0 ? SwipeDirection.Up : SwipeDirection.Down;
         }
     }
 
@@ -130,7 +126,8 @@ public class TouchRespond : MonoBehaviour
         }
         else
         {
-            GameManager.Instance.sweep.ToggleFlag(initialCellPosition.x, initialCellPosition.y);
+            Vector2Int flagPos = new Vector2Int(initialCellPosition.x, initialCellPosition.y);
+            GameManager.Instance.sweep.ToggleFlag(flagPos);
         }
 
         if (isTouching)
@@ -147,29 +144,26 @@ public class TouchRespond : MonoBehaviour
             }
         }
         isTouching = false;
-        isCircleActive = false;
         swipeDirection = SwipeDirection.None;
     }
 
     private void HandleTouchCanceled()
     {
         isTouching = false;
-        circle.SetActive(false);
-        Debug.Log("触摸取消");
-    }
-
-    private void DetectSwipe(Vector2 currentPosition)
-    {
-        float swipeDistance = currentPosition.y - initialTouchPosition.y;
-
-        if (Mathf.Abs(swipeDistance) > 50f) // 滑动阈值
-        {
-            swipeDirection = swipeDistance > 0 ? SwipeDirection.Up : SwipeDirection.Down;
-        }
     }
 
     private void HandleSwipeAction()
     {
+        if (GameManager.Instance.sweep == null)
+        {
+            Debug.LogError("Sweep is null!");
+            return;
+        }
+        if (GameManager.Instance.sweep.CellStates == null)
+        {
+            Debug.LogError("CellStates is null!");
+            return;
+        }
         Vector2Int cellPos = new Vector2Int(initialCellPosition.x, initialCellPosition.y);
 
         if (cellStates.TryGetValue(cellPos, out Cell cell))
@@ -203,12 +197,5 @@ public class TouchRespond : MonoBehaviour
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(touchPosition);
         Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
         GetComponent<Sweep>().RevealAtPosition(cellPosition.x, cellPosition.y);
-    }
-
-    private void SetCirclePosition(Vector2 position)
-    {
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(position);
-        worldPosition.z = 0;
-        circle.transform.position = worldPosition;
     }
 }
