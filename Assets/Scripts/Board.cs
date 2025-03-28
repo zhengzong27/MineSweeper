@@ -26,17 +26,11 @@ public class Board : MonoBehaviour
     {
         tilemap = GetComponent<Tilemap>();
     }
-    public void Draw(Cell[,]state)
+    public void Draw(Dictionary<Vector3Int,Cell>state)
     {
-        int width = state.GetLength(0);
-        int height = state.GetLength(1);
-        for(int x=0;x<width;x++)
+       foreach(var cell in state.Values)
         {
-            for(int y=0;y<height;y++)
-            {
-                Cell cell = state[x, y];
-                tilemap.SetTile(cell.position, GetTile(cell));
-            }
+            tilemap.SetTile(cell.position, GetTile(cell));
         }
     }
     private Tile GetTile(Cell cell)

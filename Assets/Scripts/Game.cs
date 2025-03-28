@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -7,22 +7,23 @@ using UnityEngine.Tilemaps;
 public class Game : MonoBehaviour
 {
     private bool isInitialized = false;
-    public GameObject circle; // ÍÏ×§ Circle µÄ GameObject µ½ÕâÀï
+    public GameObject circle; // æ‹–æ‹½ Circle çš„ GameObject åˆ°è¿™é‡Œ
+    public CameraController cameraController;
     public Button Restart;
     private bool GameOver;
-    private bool isCircleActive = false; // Circle ÊÇ·ñÒÑ¼¤»îisCir
-    float touchTime = 0f; // ´¥Ãş³ÖĞøÊ±¼ä
+    private bool isCircleActive = false; // Circle æ˜¯å¦å·²æ¿€æ´»isCir
+    float touchTime = 0f; // è§¦æ‘¸æŒç»­æ—¶é—´
     bool isTouching = false;
-    public Vector2 TouchPosition;//°´Ñ¹Î»ÖÃ
+    public Vector2 TouchPosition;//æŒ‰å‹ä½ç½®
     public int width = 8;
     public int height = 16;
     public int mineCount = 20;
     private Board board;
-    private Cell[,] state;
-    private Vector2 initialTouchPosition; // ³õÊ¼´¥ÃşÎ»ÖÃ
-    private Vector3Int initialCellPosition; // ³õÊ¼µ¥Ôª¸ñÎ»ÖÃ
-    private enum SwipeDirection { None, Up, Down } // »¬¶¯·½ÏòÃ¶¾Ù
-    private SwipeDirection swipeDirection = SwipeDirection.None; // µ±Ç°»¬¶¯·½Ïò
+    private Dictionary<Vector3Int, Cell> state;
+    private Vector2 initialTouchPosition; // åˆå§‹è§¦æ‘¸ä½ç½®
+    private Vector3Int initialCellPosition; // åˆå§‹å•å…ƒæ ¼ä½ç½®
+    private enum SwipeDirection { None, Up, Down } // æ»‘åŠ¨æ–¹å‘æšä¸¾
+    private SwipeDirection swipeDirection = SwipeDirection.None; // å½“å‰æ»‘åŠ¨æ–¹å‘
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -39,11 +40,11 @@ public class Game : MonoBehaviour
     private void NewGame()
     {
         circle.SetActive(false);
-        isInitialized = false; //³õÊ¼»¯×´Ì¬
+        isInitialized = false; //åˆå§‹åŒ–çŠ¶æ€
         GameOver = false;
         Restart.gameObject.SetActive(false);
-        state = new Cell[width, height];
-        GenerateCells();//Ö»Éú²ú¿Õ°×µ¥Ôª¸ñ£¬Íæ¼ÒµÚÒ»´Î°´ÏÂºóÉú³ÉµØÍ¼
+        state = new Dictionary<Vector3Int, Cell>();
+        GenerateCells();//åªç”Ÿäº§ç©ºç™½å•å…ƒæ ¼ï¼Œç©å®¶ç¬¬ä¸€æ¬¡æŒ‰ä¸‹åç”Ÿæˆåœ°å›¾
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         board.Draw(state);
     }
@@ -53,63 +54,17 @@ public class Game : MonoBehaviour
         {
             for (int y = 0; y < height; y++)
             {
-                Cell cell = new Cell();
-                cell.position = new Vector3Int(x, y, 0);
-                cell.type = Cell.Type.Empty;
-                state[x, y] = cell;
+                Vector3Int position = new Vector3Int(x, y, 0);
+                Cell cell = new Cell(position, Cell.Type.Empty, null);
+                state[position] = cell;
             }
         }
     }
-    //private void GenerateMines()
-    //{
-    //    for (int i = 0; i < mineCount; i++)
-    //    {//Ëæ»ú²úÉú
-    //        int x = Random.Range(0, width);
-    //        int y = Random.Range(0, height);
-    //        while (state[x, y].type == Cell.Type.Mine)//Èç¹ûµ±Ç°¸ñÒÑÓĞµØÀ×£¬ÖØĞÂÉú³É
-    //        {
-    //            x++;
-    //            if (x >= width)
-    //            {
-    //                x = 0;
-    //                y++;
-    //                if (y >= height) {
-    //                    y = 0;
-    //                }
-    //            }
-    //        }
-    //        //ÉèÖÃµØÀ×
-    //        state[x, y].type = Cell.Type.Mine;
-    //        //µØÀ×È«ÁÁ¼ì²éÉú³É×´Ì¬
-    //        //state[x, y].revealed = true;
-    //    }
-    //}
-    //private void GenerateNumber()
-    //{ for (int x = 0; x < width; x++)
-    //    {
-    //        for (int y = 0; y < height; y++)
-    //        {
-    //            Cell cell = state[x, y];
-    //            if (cell.type == Cell.Type.Mine)
-    //            {
-    //                continue;
-    //            }
-    //            cell.Number = CountMines(x, y);
-    //            if (cell.Number > 0)
-    //            {
-    //                cell.type = Cell.Type.Number;
-    //            }
-    //            state[x, y] = cell;
-    //            //ÏÔÊ¾Êı×Ö
-    //            //state[x, y].revealed = true;
-    //        }
-    //    }
-    //}
-    private void InitializeWithFirstClick(Vector2Int firstClick)
+    private void InitializeWithFirstClick(Vector2Int firstClick)//é›·æ˜¯åœ¨åœ°å›¾ç”Ÿæˆåäº§ç”Ÿ
     {
-        // ²½Öè1: ´´½¨°²È«ÇøÓò
+        // æ­¥éª¤1: åˆ›å»ºå®‰å…¨åŒºåŸŸ
         HashSet<Vector2Int> forbiddenArea = new HashSet<Vector2Int>();
-        for (int dx = -1; dx <= 1; dx++)
+        for (int dx = -1; dx <= 1; dx++)//éå†å­˜å…¥å®‰å…¨æ•°ç»„
         {
             for (int dy = -1; dy <= 1; dy++)
             {
@@ -119,9 +74,9 @@ public class Game : MonoBehaviour
             }
         }
 
-        // ²½Öè2: Éú³ÉºòÑ¡Î»ÖÃ
+        // æ­¥éª¤2: ç”Ÿæˆå€™é€‰ä½ç½®
         List<Vector2Int> candidates = new List<Vector2Int>();
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < width; x++)//éå†å­˜å…¥å¯å¸ƒé›·æ•°ç»„
         {
             for (int y = 0; y < height; y++)
             {
@@ -132,30 +87,39 @@ public class Game : MonoBehaviour
             }
         }
 
-        // ²½Öè3: Ëæ»ú²¼À×
-        int mineCount = Mathf.Min(this.mineCount, candidates.Count);
+        // æ­¥éª¤3: éšæœºå¸ƒé›·ï¼ŒFisher-Yatesæ´—ç‰Œç®—æ³•
+        int mineCount = Mathf.Min(this.mineCount, candidates.Count);//é™åˆ¶åœ°é›·æ•°å°äºMine count
         System.Random rng = new System.Random();
         for (int i = 0; i < mineCount; i++)
         {
-            int index = rng.Next(i, candidates.Count);
+            int index = rng.Next(i, candidates.Count);//ä»å‰©ä½™æœªå¤„ç†çš„å€™é€‰ä½ç½®ä¸­éšæœºé€‰ä¸€ä¸ªå¸ƒé›·
+            //äº¤æ¢ candidates[i] å’Œ candidates[index]å¹¶å¸ƒé›·äº[i]
             Vector2Int temp = candidates[i];
             candidates[i] = candidates[index];
             candidates[index] = temp;
 
             Vector2Int pos = candidates[i];
-            state[pos.x, pos.y].type = Cell.Type.Mine;
+            Vector3Int position = new Vector3Int(pos.x, pos.y, 0);
+            if (state.TryGetValue(position, out Cell cell))
+            {
+                cell.type = Cell.Type.Mine;
+                state[position] = cell;
+            }
         }
 
-        // ²½Öè4: ¼ÆËãÊı×Ö
+        // æ­¥éª¤4: è®¡ç®—æ•°å­—
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (state[x, y].type != Cell.Type.Mine)
+                Vector3Int position = new Vector3Int(x, y, 0);
+                Cell cell = state[position];
+                if (cell.type != Cell.Type.Mine)
                 {
                     int count = CountMines(x, y);
-                    state[x, y].Number = count;
-                    state[x, y].type = count > 0 ? Cell.Type.Number : Cell.Type.Empty;
+                    cell.Number = count;
+                    cell.type = count > 0 ? Cell.Type.Number : Cell.Type.Empty;
+                    state[position] = cell;
                 }
             }
         }
@@ -180,7 +144,8 @@ public class Game : MonoBehaviour
                 {
                     continue;
                 }
-                if (state[x, y].type == Cell.Type.Mine)
+                 Vector3Int position = new Vector3Int(x, y, 0);
+                if (state.TryGetValue(position, out Cell cell) && cell.type == Cell.Type.Mine)
                 {
                     count++;
                 }
@@ -192,82 +157,90 @@ public class Game : MonoBehaviour
     {
         if (!GameOver)
         {
-            if (Input.touchCount > 0) // ¼ì²éÊÇ·ñÓĞ´¥Ãşµã
+            Touch();
+        }
+    }
+    private void Touch()
+    {
+        if (Input.touchCount > 0) // æ£€æŸ¥æ˜¯å¦æœ‰è§¦æ‘¸ç‚¹
+        {
+            Touch touch = Input.GetTouch(0); // è·å–ç¬¬ä¸€ä¸ªè§¦æ‘¸ç‚¹
+
+            switch (touch.phase)
             {
-                Touch touch = Input.GetTouch(0); // »ñÈ¡µÚÒ»¸ö´¥Ãşµã
+                case TouchPhase.Began:
+                    isTouching = true;
+                    touchTime = Time.time; // è®°å½•è§¦æ‘¸å¼€å§‹æ—¶é—´
+                    TouchPosition = touch.position;
+                    swipeDirection = SwipeDirection.None; // é‡ç½®æ»‘åŠ¨æ–¹å‘
 
-                switch (touch.phase)
-                {
-                    case TouchPhase.Began:
-                        isTouching = true;
-                        touchTime = Time.time; // ¼ÇÂ¼´¥Ãş¿ªÊ¼Ê±¼ä
-                        TouchPosition = touch.position;
-                        swipeDirection = SwipeDirection.None; // ÖØÖÃ»¬¶¯·½Ïò
+                    // æ£€æµ‹è§¦æ‘¸ä½ç½®å¯¹åº”çš„å•å…ƒæ ¼æ˜¯å¦å·²æ­å¼€
+                    Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+                    Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+                    Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-                        // ¼ì²â´¥ÃşÎ»ÖÃ¶ÔÓ¦µÄµ¥Ôª¸ñÊÇ·ñÒÑ½Ò¿ª
-                        Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
-                        Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
-                        Cell cell = GetCell(cellPosition.x, cellPosition.y);
+                    if (cell.type != Cell.Type.Invalid && !cell.revealed) // å¦‚æœå•å…ƒæ ¼æœªæ­å¼€
+                    {
+                        // è®°å½•åˆå§‹è§¦æ‘¸ä½ç½®å’Œå•å…ƒæ ¼
+                        initialTouchPosition = TouchPosition;
+                        initialCellPosition = cellPosition;
+                        isCircleActive = true; // å…è®¸ Circle å‡ºç°
+                        Debug.Log("è§¦æ‘¸åˆ°æœªæ­å¼€çš„å•å…ƒæ ¼ï¼Œå…è®¸ Circle å‡ºç°");
+                    }
+                    else // å¦‚æœå•å…ƒæ ¼å·²æ­å¼€æˆ–æ— æ•ˆ
+                    {
+                        // ç¦æ­¢ Circle å‡ºç°
+                        isCircleActive = false;
+                        Debug.Log("è§¦æ‘¸åˆ°å·²æ­å¼€çš„å•å…ƒæ ¼ï¼Œç¦æ­¢ Circle å‡ºç°");
+                    }
+                    break;
 
-                        if (cell.type != Cell.Type.Invalid && !cell.revealed) // Èç¹ûµ¥Ôª¸ñÎ´½Ò¿ª
+                case TouchPhase.Stationary:
+                    if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f) // è§¦æ‘¸æ—¶é—´å¤§äºç­‰äº 0.25 ç§’
+                    {
+                        // è®¾ç½® Circle çš„ä½ç½®ï¼ˆåŸºäºåˆå§‹è§¦æ‘¸ä½ç½®ï¼‰
+                        SetCirclePosition(initialTouchPosition);
+                        // æ¿€æ´» Circle
+                        circle.SetActive(true);
+                        Debug.Log("è§¦æ‘¸æ—¶é—´å¤§äºç­‰äº 0.25 ç§’ï¼ŒCircle å·²æ¿€æ´»");
+                    }
+                    break;
+
+                case TouchPhase.Moved:
+                    if (isCircleActive && circle.activeSelf) // å¦‚æœ Circle å·²æ¿€æ´»
+                    {
+                        // æ£€æµ‹æ»‘åŠ¨æ–¹å‘
+                        DetectSwipe(touch.position);
+                    }
+                    else
+                    {
+                        cameraController.HandleTouchInput();
+                    }
+                    break;
+
+                case TouchPhase.Ended:
+                    circle.SetActive(false);
+                    if (isTouching)
+                    {
+                        if (Time.time - touchTime < 0.25f) // çŸ­æŒ‰æ“ä½œ
                         {
-                            // ¼ÇÂ¼³õÊ¼´¥ÃşÎ»ÖÃºÍµ¥Ôª¸ñ
-                            initialTouchPosition = TouchPosition;
-                            initialCellPosition = cellPosition;
-                            isCircleActive = true; // ÔÊĞí Circle ³öÏÖ
-                            Debug.Log("´¥Ãşµ½Î´½Ò¿ªµÄµ¥Ôª¸ñ£¬ÔÊĞí Circle ³öÏÖ");
+                            Reveal(); // ç‚¹å‡»æ“ä½œ
+                            Debug.Log("æ­å¼€æ“ä½œ");
                         }
-                        else // Èç¹ûµ¥Ôª¸ñÒÑ½Ò¿ª»òÎŞĞ§
+                        else if (swipeDirection != SwipeDirection.None) // æ»‘åŠ¨æ“ä½œ
                         {
-                            // ½ûÖ¹ Circle ³öÏÖ
-                            isCircleActive = false;
-                            Debug.Log("´¥Ãşµ½ÒÑ½Ò¿ªµÄµ¥Ôª¸ñ£¬½ûÖ¹ Circle ³öÏÖ");
+                            // æ ¹æ®æ»‘åŠ¨æ–¹å‘åˆ‡æ¢å•å…ƒæ ¼çŠ¶æ€
+                            HandleSwipeAction();
                         }
-                        break;
+                    }
+                    isTouching = false; // é‡ç½®çŠ¶æ€
+                    break;
 
-                    case TouchPhase.Stationary:
-                        if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f) // ´¥ÃşÊ±¼ä´óÓÚµÈÓÚ 0.25 Ãë
-                        {
-                            // ÉèÖÃ Circle µÄÎ»ÖÃ£¨»ùÓÚ³õÊ¼´¥ÃşÎ»ÖÃ£©
-                            SetCirclePosition(initialTouchPosition);
-                            // ¼¤»î Circle
-                            circle.SetActive(true);
-                            Debug.Log("´¥ÃşÊ±¼ä´óÓÚµÈÓÚ 0.25 Ãë£¬Circle ÒÑ¼¤»î");
-                        }
-                        break;
-
-                    case TouchPhase.Moved:
-                        if (isCircleActive && circle.activeSelf) // Èç¹û Circle ÒÑ¼¤»î
-                        {
-                            // ¼ì²â»¬¶¯·½Ïò
-                            DetectSwipe(touch.position);
-                        }
-                        break;
-
-                    case TouchPhase.Ended:
-                        circle.SetActive(false);
-                        if (isTouching)
-                        {
-                            if (Time.time - touchTime < 0.25f) // ¶Ì°´²Ù×÷
-                            {
-                                Reveal(); // µã»÷²Ù×÷
-                                Debug.Log("½Ò¿ª²Ù×÷");
-                            }
-                            else if (swipeDirection != SwipeDirection.None) // »¬¶¯²Ù×÷
-                            {
-                                // ¸ù¾İ»¬¶¯·½ÏòÇĞ»»µ¥Ôª¸ñ×´Ì¬
-                                HandleSwipeAction();
-                            }
-                        }
-                        isTouching = false; // ÖØÖÃ×´Ì¬
-                        break;
-
-                    case TouchPhase.Canceled:
-                        isTouching = false;
-                        circle.SetActive(false);
-                        Debug.Log("´¥ÃşÈ¡Ïû");
-                        break;
-                }
+                case TouchPhase.Canceled:
+                    isTouching = false;
+                    circle.SetActive(false);
+                    Debug.Log("è§¦æ‘¸å–æ¶ˆ");
+                    break;
             }
         }
     }
@@ -275,7 +248,7 @@ public class Game : MonoBehaviour
     {
         if (circle != null)
         {
-            // ½«ÆÁÄ»×ø±ê×ª»»ÎªÊÀ½ç×ø±ê
+            // å°†å±å¹•åæ ‡è½¬æ¢ä¸ºä¸–ç•Œåæ ‡
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 circle.GetComponent<RectTransform>().parent as RectTransform,
                 screenPosition,
@@ -283,99 +256,99 @@ public class Game : MonoBehaviour
                 out Vector2 localPosition
             );
 
-            // ÉèÖÃ Circle µÄÎ»ÖÃ
+            // è®¾ç½® Circle çš„ä½ç½®
             circle.GetComponent<RectTransform>().localPosition = localPosition;
         }
     }
     private void DetectSwipe(Vector2 currentTouchPosition)
     {
-        // ¼ÆËã»¬¶¯¾àÀë
+        // è®¡ç®—æ»‘åŠ¨è·ç¦»
         float swipeDistance = currentTouchPosition.y - initialTouchPosition.y;
 
-        // »¬¶¯¾àÀëãĞÖµ£¨ÀıÈç 50 ÏñËØ£©
+        // æ»‘åŠ¨è·ç¦»é˜ˆå€¼ï¼ˆä¾‹å¦‚ 50 åƒç´ ï¼‰
         float swipeThreshold = 50f;
 
         if (Mathf.Abs(swipeDistance) > swipeThreshold)
         {
-            if (swipeDistance > 0) // ÏòÉÏ»¬¶¯
+            if (swipeDistance > 0) // å‘ä¸Šæ»‘åŠ¨
             {
                 swipeDirection = SwipeDirection.Up;
-                Debug.Log("ÏòÉÏ»¬¶¯");
+                Debug.Log("å‘ä¸Šæ»‘åŠ¨");
             }
-            else // ÏòÏÂ»¬¶¯
+            else // å‘ä¸‹æ»‘åŠ¨
             {
                 swipeDirection = SwipeDirection.Down;
-                Debug.Log("ÏòÏÂ»¬¶¯");
+                Debug.Log("å‘ä¸‹æ»‘åŠ¨");
             }
         }
     }
     private void HandleSwipeAction()
     {
-        if (swipeDirection == SwipeDirection.Up) // ÉÏ»¬²åÆì
+        if (swipeDirection == SwipeDirection.Up) // ä¸Šæ»‘æ’æ——
         {
-            Debug.Log("Ö´ĞĞ Flags ·½·¨");
-            Flags(initialCellPosition); // ×÷ÓÃÓÚ³õÊ¼µ¥Ôª¸ñ
+            Debug.Log("æ‰§è¡Œ Flags æ–¹æ³•");
+            Flags(initialCellPosition); // ä½œç”¨äºåˆå§‹å•å…ƒæ ¼
         }
-        else if (swipeDirection == SwipeDirection.Down) // ÏÂ»¬ÎÊºÅ
+        else if (swipeDirection == SwipeDirection.Down) // ä¸‹æ»‘é—®å·
         {
-            Debug.Log("Ö´ĞĞ Question ·½·¨");
-            Question(initialCellPosition); // ×÷ÓÃÓÚ³õÊ¼µ¥Ôª¸ñ
+            Debug.Log("æ‰§è¡Œ Question æ–¹æ³•");
+            Question(initialCellPosition); // ä½œç”¨äºåˆå§‹å•å…ƒæ ¼
         }
     }
     private void Question(Vector3Int cellPosition)
     {
-        Debug.Log("½øÈë Question ·½·¨");
+        Debug.Log("è¿›å…¥ Question æ–¹æ³•");
 
-        // »ñÈ¡³õÊ¼µ¥Ôª¸ñ
+        // è·å–åˆå§‹å•å…ƒæ ¼
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-        // Èç¹ûµ¥Ôª¸ñÎŞĞ§»òÒÑ½Ò¿ª£¬Ö±½Ó·µ»Ø
+        // å¦‚æœå•å…ƒæ ¼æ— æ•ˆæˆ–å·²æ­å¼€ï¼Œç›´æ¥è¿”å›
         if (cell.type == Cell.Type.Invalid || cell.revealed)
         {
-            Debug.Log("µ¥Ôª¸ñÎŞĞ§»òÒÑ½Ò¿ª£¬Ö±½Ó·µ»Ø");
+            Debug.Log("å•å…ƒæ ¼æ— æ•ˆæˆ–å·²æ­å¼€ï¼Œç›´æ¥è¿”å›");
             return;
         }
 
-        // ÇĞ»»ÎÊºÅ±ê¼Ç×´Ì¬
-        cell.flagged = false; // Çå³ı²åÆì×´Ì¬
-        cell.questioned = !cell.questioned; // ÇĞ»»ÎÊºÅ×´Ì¬
-                                            // ¸üĞÂµ¥Ôª¸ñµÄ Tile
+        // åˆ‡æ¢é—®å·æ ‡è®°çŠ¶æ€
+        cell.flagged = false; // æ¸…é™¤æ’æ——çŠ¶æ€
+        cell.questioned = !cell.questioned; // åˆ‡æ¢é—®å·çŠ¶æ€
+                                            // æ›´æ–°å•å…ƒæ ¼çš„ Tile
         if (cell.questioned)
         {
-            Debug.Log("ÉèÖÃµ¥Ôª¸ñÎªÎÊºÅ Tile");
-            cell.tile = board.tileQuestion; // ¸üĞÂ tile ÊôĞÔ
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // ÉèÖÃ Tilemap ÖĞµÄ Tile
+            Debug.Log("è®¾ç½®å•å…ƒæ ¼ä¸ºé—®å· Tile");
+            cell.tile = board.tileQuestion; // æ›´æ–° tile å±æ€§
+            board.tilemap.SetTile(cellPosition, board.tileQuestion); // è®¾ç½® Tilemap ä¸­çš„ Tile
         }
         else
         {
-            Debug.Log("»Ö¸´µ¥Ôª¸ñÎªÎ´Öª Tile");
-            cell.tile = board.tileUnknown; // ¸üĞÂ tile ÊôĞÔ
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // ÉèÖÃ Tilemap ÖĞµÄ Tile
+            Debug.Log("æ¢å¤å•å…ƒæ ¼ä¸ºæœªçŸ¥ Tile");
+            cell.tile = board.tileUnknown; // æ›´æ–° tile å±æ€§
+            board.tilemap.SetTile(cellPosition, board.tileUnknown); // è®¾ç½® Tilemap ä¸­çš„ Tile
         }
-        state[cellPosition.x, cellPosition.y] = cell;// ¸üĞÂ×´Ì¬Êı×é
+        state[cell.position] = cell;
 
-        // ¸üĞÂµ¥Ôª¸ñÌùÍ¼
+        // æ›´æ–°å•å…ƒæ ¼è´´å›¾
         if (cell.questioned)
         {
-            Debug.Log("ÉèÖÃµ¥Ôª¸ñÎªÎÊºÅÌùÍ¼");
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // ÉèÖÃÎªÎÊºÅÌùÍ¼
+            Debug.Log("è®¾ç½®å•å…ƒæ ¼ä¸ºé—®å·è´´å›¾");
+            board.tilemap.SetTile(cellPosition, board.tileQuestion); // è®¾ç½®ä¸ºé—®å·è´´å›¾
         }
         else
         {
-            Debug.Log("»Ö¸´µ¥Ôª¸ñÎªÎ´ÖªÌùÍ¼");
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // »Ö¸´ÎªÎ´ÖªÌùÍ¼
+            Debug.Log("æ¢å¤å•å…ƒæ ¼ä¸ºæœªçŸ¥è´´å›¾");
+            board.tilemap.SetTile(cellPosition, board.tileUnknown); // æ¢å¤ä¸ºæœªçŸ¥è´´å›¾
         }
 
-        // Èç¹û±ê¼Ç³É¹¦£¬´¥·¢Õğ¶¯
+        // å¦‚æœæ ‡è®°æˆåŠŸï¼Œè§¦å‘éœ‡åŠ¨
         if (cell.questioned)
         {
             Handheld.Vibrate();
         }
 
-        // Ç¿ÖÆË¢ĞÂ Tilemap
+        // å¼ºåˆ¶åˆ·æ–° Tilemap
         board.tilemap.RefreshAllTiles();
 
-        Debug.Log("Question ·½·¨×÷ÓÃÓÚµ¥Ôª¸ñ: (" + cellPosition.x + ", " + cellPosition.y + ")");
+        Debug.Log("Question æ–¹æ³•ä½œç”¨äºå•å…ƒæ ¼: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
     private void Reveal()
     {
@@ -385,11 +358,11 @@ public class Game : MonoBehaviour
 
         if (!isInitialized)
         {
-            // Ê×´Îµã»÷Ê±³õÊ¼»¯µØÍ¼
+            // é¦–æ¬¡ç‚¹å‡»æ—¶åˆå§‹åŒ–åœ°å›¾
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
         }
 
-        if (cell.type == Cell.Type.Invalid || cell.flagged) // Èç¹ûµ¥Ôª¸ñÎŞĞ§¡¢²åÆì»ò±ê¼ÇÎªÎÊºÅ
+        if (cell.type == Cell.Type.Invalid || cell.flagged) // å¦‚æœå•å…ƒæ ¼æ— æ•ˆã€æ’æ——æˆ–æ ‡è®°ä¸ºé—®å·
         {
             return;
         }
@@ -403,8 +376,8 @@ public class Game : MonoBehaviour
                 Flood(cell);
                 ifWin();
                 break;
-            case Cell.Type.Number: // ĞÂÔö¿ìËÙ½Ò¿ªÂß¼­
-                Debug.Log("°´ÏÂÊı×Öµ¥Ôª¸ñ");
+            case Cell.Type.Number: // æ–°å¢å¿«é€Ÿæ­å¼€é€»è¾‘
+                Debug.Log("æŒ‰ä¸‹æ•°å­—å•å…ƒæ ¼");
                 if (cell.revealed)
                 {
                     CheckQuickReveal(cellPosition.x, cellPosition.y);
@@ -412,7 +385,7 @@ public class Game : MonoBehaviour
                 else
                 {
                     cell.revealed = true;
-                    state[cellPosition.x, cellPosition.y] = cell;
+                    state[cell.position] = cell;
                     ifWin();
                 }
                 break;
@@ -430,7 +403,7 @@ public class Game : MonoBehaviour
         List<Vector2Int> cellsToReveal = new List<Vector2Int>();
         List<Vector2Int> cellsToBlink = new List<Vector2Int>();
 
-        // Í³¼ÆÖÜÎ§±ê¼ÇµÄµØÀ×ÊıÁ¿ºÍĞèÒª½ÒÊ¾µÄµ¥Ôª¸ñ
+        // ç»Ÿè®¡å‘¨å›´æ ‡è®°çš„åœ°é›·æ•°é‡å’Œéœ€è¦æ­ç¤ºçš„å•å…ƒæ ¼
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -449,13 +422,13 @@ public class Game : MonoBehaviour
                     else if (!neighbor.revealed && !neighbor.flagged)
                     {
                         cellsToReveal.Add(new Vector2Int(checkX, checkY));
-                        cellsToBlink.Add(new Vector2Int(checkX, checkY)); // Ìí¼Óµ½ÉÁË¸ÁĞ±í
+                        cellsToBlink.Add(new Vector2Int(checkX, checkY)); // æ·»åŠ åˆ°é—ªçƒåˆ—è¡¨
                     }
                 }
             }
         }
 
-        // ¿ìËÙ½ÒÊ¾Ìõ¼şÅĞ¶Ï
+        // å¿«é€Ÿæ­ç¤ºæ¡ä»¶åˆ¤æ–­
         if (flagCount >= centerCell.Number)
         {
             foreach (Vector2Int pos in cellsToReveal)
@@ -477,7 +450,9 @@ public class Game : MonoBehaviour
                     }
                     else
                     {
-                        state[pos.x, pos.y].revealed = true;
+                        Cell c = GetCell(pos.x, pos.y);
+                        c.revealed = true;
+                        state[c.position] = c;
                     }
                 }
             }
@@ -486,75 +461,81 @@ public class Game : MonoBehaviour
         }
         else
         {
-            // ¿ìËÙ½ÒÊ¾Ìõ¼ş²»Âú×ã£¬´¥·¢ÉÁË¸
-            Debug.Log("¿ìËÙ½ÒÊ¾Ìõ¼ş²»Âú×ã£¬´¥·¢ÉÁË¸");
-            StartCoroutine(BlinkCells(cellsToBlink));
+            // å¿«é€Ÿæ­ç¤ºæ¡ä»¶ä¸æ»¡è¶³ï¼Œè§¦å‘é—ªçƒ
+            Debug.Log("å¿«é€Ÿæ­ç¤ºæ¡ä»¶ä¸æ»¡è¶³ï¼Œè§¦å‘é—ªçƒ");
+            //StartCoroutine(BlinkCells(cellsToBlink));
         }
     }
 
     private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
     {
-        Debug.Log("¿ªÊ¼ÉÁË¸");
+        Debug.Log("å¼€å§‹é—ªçƒ");
         int blinkCount = 2;
         float blinkDuration = 0.05f;
 
-        // ±£´æÉÁË¸Ç°µÄ Tile
+        // ä¿å­˜é—ªçƒå‰çš„ Tile
     Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
         foreach (var pos in cellsToBlink)
         {
-            if (state[pos.x, pos.y].tile == null)
+            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+            if (!state.TryGetValue(cellPos, out Cell cell) || cell.tile == null)
             {
-                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null!");
+                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null or cell not found!");
+                continue;
             }
-            else
-            {
-                previousTiles[pos] = state[pos.x, pos.y].tile; // ±£´æÔ­Ê¼ Tile
-                Debug.Log("ÉÁË¸Ç°µÄ Tile: " + previousTiles[pos]);
-            }
+
+            previousTiles[pos] = cell.tile; // ä¿å­˜åŸå§‹ Tile
+            Debug.Log("é—ªçƒå‰çš„ Tile: " + previousTiles[pos]);
         }
 
-        // ÉÁË¸Âß¼­
+        // é—ªçƒé€»è¾‘
         for (int i = 0; i < blinkCount; i++)
         {
-            Debug.Log("ÉèÖÃÎªºìÉ« Tile");
+            Debug.Log("è®¾ç½®ä¸ºçº¢è‰² Tile");
             foreach (var pos in cellsToBlink)
             {
-                Debug.Log("±ä³ÉºìÉ«£¡£¡£¡");
-                state[pos.x, pos.y].tile = board.tileRed; // Ìæ»»ÎªºìÉ« Tile
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // Ç¿ÖÆÉèÖÃ Tile
+                Debug.Log("å˜æˆçº¢è‰²ï¼ï¼ï¼");
+                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // æ›¿æ¢ä¸ºçº¢è‰² Tile
             }
-            board.tilemap.RefreshAllTiles(); // Ç¿ÖÆË¢ĞÂ Tilemap
+            board.tilemap.RefreshAllTiles(); // å¼ºåˆ¶åˆ·æ–° Tilemap
             yield return new WaitForSeconds(blinkDuration);
-            Debug.Log("»Ö¸´³ÉÉÁË¸Ç°µÄ Tile");
+            Debug.Log("æ¢å¤æˆé—ªçƒå‰çš„ Tile");
             foreach (var pos in cellsToBlink)
             {
-                Debug.Log("ÉÁË¸ºóµÄ Tile: " + state[pos.x, pos.y].tile);
-                state[pos.x, pos.y].tile = previousTiles[pos]; // »Ö¸´³ÉÉÁË¸Ç°µÄ Tile
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), previousTiles[pos]); // Ç¿ÖÆÉèÖÃ Tile
-                board.tilemap.RefreshTile(new Vector3Int(pos.x, pos.y, 0)); // Ç¿ÖÆË¢ĞÂµ¥¸ö Tile
+                if (!previousTiles.TryGetValue(pos, out Tile originalTile))
+                    continue;
+
+                Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+                if (state.TryGetValue(cellPos, out Cell cell))
+                {
+                    cell.tile = originalTile;
+                    state[cellPos] = cell;
+                    board.tilemap.SetTile(cellPos, originalTile);
+                    board.tilemap.RefreshTile(cellPos);
+                }
             }
-            board.Draw(state); // ¸üĞÂ Tilemap äÖÈ¾
+            board.Draw(state);
             yield return new WaitForSeconds(blinkDuration);
         }
-        Debug.Log("ÉÁË¸½áÊø");
+        Debug.Log("é—ªçƒç»“æŸ");
     }
     private void Explode(Cell cell)
     {
-        Debug.Log("ÄãÊäÁË!");
+        Debug.Log("ä½ è¾“äº†!");
         Restart.gameObject.SetActive(true);
         GameOver = true;
         cell.revealed = true;
         cell.exploded = true;
-        state[cell.position.x, cell.position.y] = cell;
+        state[cell.position] = cell;
         for (int x = 0; x < width; x++)
         {
             for(int y = 0; y < height; y++)
             {
-                cell = state[x, y];
-                if(cell.type==Cell.Type.Mine)
+                Vector3Int pos = new Vector3Int(x, y, 0);
+                if (state.TryGetValue(pos, out Cell c) && c.type == Cell.Type.Mine)
                 {
-                    cell.revealed = true;
-                    state[x, y] = cell;
+                    c.revealed = true;
+                    state[pos] = c; // âœ… æ­£ç¡®æ›´æ–°å­—å…¸
                 }
             }
         }
@@ -564,17 +545,18 @@ public class Game : MonoBehaviour
         if (cell.revealed) return;
         if (cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged) return;
 
+        Vector3Int cellPos = new Vector3Int(cell.position.x, cell.position.y, 0);
         cell.revealed = true;
-        state[cell.position.x, cell.position.y] = cell;
+        state[cellPos] = cell;  // ä½¿ç”¨ Vector3Int ä½œä¸ºé”®
 
         if (cell.type == Cell.Type.Empty)
         {
-            // °Ë·½Ïòµİ¹é½Ò¿ª
+            // å…«æ–¹å‘é€’å½’æ­å¼€
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dy = -1; dy <= 1; dy++)
                 {
-                    if (dx == 0 && dy == 0) continue; // Ìø¹ı×ÔÉí
+                    if (dx == 0 && dy == 0) continue; // è·³è¿‡è‡ªèº«
 
                     int x = cell.position.x + dx;
                     int y = cell.position.y + dy;
@@ -591,39 +573,34 @@ public class Game : MonoBehaviour
     }
     private void Flags(Vector3Int cellPosition)
     {
-        // »ñÈ¡³õÊ¼µ¥Ôª¸ñ
+        // è·å–åˆå§‹å•å…ƒæ ¼
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
 
-        // Èç¹ûµ¥Ôª¸ñÎŞĞ§»òÒÑ½Ò¿ª£¬Ö±½Ó·µ»Ø
+        // å¦‚æœå•å…ƒæ ¼æ— æ•ˆæˆ–å·²æ­å¼€ï¼Œç›´æ¥è¿”å›
         if (cell.type == Cell.Type.Invalid || cell.revealed)
         {
             return;
         }
 
-        // ÇĞ»»±ê¼Ç×´Ì¬
+        // åˆ‡æ¢æ ‡è®°çŠ¶æ€
         cell.flagged = !cell.flagged;
-        state[cellPosition.x, cellPosition.y] = cell;
+        state[cellPosition] = cell; 
 
-        // Èç¹û±ê¼Ç³É¹¦£¬´¥·¢Õğ¶¯
+        // å¦‚æœæ ‡è®°æˆåŠŸï¼Œè§¦å‘éœ‡åŠ¨
         if (cell.flagged)
         {
             Handheld.Vibrate();
         }
 
-        // ¸üĞÂÆåÅÌäÖÈ¾
+        // æ›´æ–°æ£‹ç›˜æ¸²æŸ“
         board.Draw(state);
 
-        Debug.Log("Flags ·½·¨×÷ÓÃÓÚµ¥Ôª¸ñ: (" + cellPosition.x + ", " + cellPosition.y + ")");
+        Debug.Log("Flags æ–¹æ³•ä½œç”¨äºå•å…ƒæ ¼: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
     private Cell GetCell(int x,int y)
     {
-        if (IsValid(x, y))
-        {
-            return state[x, y];
-        }
-        else {
-            return new Cell { type = Cell.Type.Invalid };
-        }
+        Vector3Int position = new Vector3Int(x, y, 0);
+        return state.TryGetValue(position, out Cell cell) ? cell : new Cell(position, Cell.Type.Invalid, null);
     }
     private bool IsValid(int x,int y)
     {
@@ -636,7 +613,8 @@ public class Game : MonoBehaviour
         {
             for(int y=0;y<height;y++)
             {
-                Cell cell = state[x, y];
+                Vector3Int pos = new Vector3Int(x, y, 0);
+                if (!state.TryGetValue(pos, out Cell cell)) continue;
                 if (cell.type != Cell.Type.Mine && !cell.revealed)
                 {
                     return;
@@ -644,18 +622,18 @@ public class Game : MonoBehaviour
             }
         }
 
-        Debug.Log("ÄãÓ®ÁË£¡");
+        Debug.Log("ä½ èµ¢äº†ï¼");
         Restart.gameObject.SetActive(true);
         GameOver = true;
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                Cell cell = state[x, y];
-                if (cell.type == Cell.Type.Mine)
+                Vector3Int pos = new Vector3Int(x, y, 0);
+                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
                 {
                     cell.flagged = true;
-                    state[x, y] = cell;
+                    state[pos] = cell;
                 }
             }
         }
@@ -663,7 +641,7 @@ public class Game : MonoBehaviour
     private void RestartGame()
     {
         GameOver = false;
-        Restart.gameObject.SetActive(false); // Òş²Ø°´Å¥
+        Restart.gameObject.SetActive(false); // éšè—æŒ‰é’®
 
         NewGame();
     }
