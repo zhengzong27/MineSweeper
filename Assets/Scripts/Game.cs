@@ -145,17 +145,15 @@ public class Game : MonoBehaviour
         {
             for (int adjacentY = -1; adjacentY <= 1; adjacentY++)
             {
-                if (adjacentX == 0 && adjacentY == 0)
-                {
-                    continue;
-                }
+                if (adjacentX == 0 && adjacentY == 0) continue;
+
                 int x = cellX + adjacentX;
                 int y = cellY + adjacentY;
-                if (x < 0 || x >= width || y < 0 || y >= height)
-                {
-                    continue;
-                }
-                 Vector3Int position = new Vector3Int(x, y, 0);
+
+                // 添加边界检查
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+
+                Vector3Int position = new Vector3Int(x, y, 0);
                 if (state.TryGetValue(position, out Cell cell) && cell.type == Cell.Type.Mine)
                 {
                     count++;
@@ -169,7 +167,7 @@ public class Game : MonoBehaviour
         if (!GameOver)
         {
             UpdateDynamicMap();
-            //Touch();
+            Touch();
         }
     }
     private void UpdateDynamicMap()
@@ -203,6 +201,10 @@ public class Game : MonoBehaviour
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
                 board.tilemap.SetTile(position, board.tileUnknown);
+                if (!state.ContainsKey(position))
+                {
+                    state[position] = new Cell(position, Cell.Type.Empty, null); // 实际数据部分
+                }
             }
         }
 
@@ -651,8 +653,8 @@ public class Game : MonoBehaviour
         Vector3Int position = new Vector3Int(x, y, 0);
         if (!state.ContainsKey(position))
         {
-            // 如果单元格不在字典中，创建一个新的无效单元格
-            return new Cell(position, Cell.Type.Invalid, null);
+            // 如果单元格不存在，创建并返回一个默认的空单元格
+            state[position] = new Cell(position, Cell.Type.Empty, null);
         }
         return state[position];
     }
