@@ -24,6 +24,13 @@ public class Game : MonoBehaviour
     private Vector3Int initialCellPosition; // 初始单元格位置
     private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
     private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
+
+    [Header("Dynamic Map Settings")]
+    public int viewportWidth = 8; // 摄像头可见宽度
+    public int viewportHeight = 16; // 摄像头可见高度
+    public int bufferSize = 3; // 缓冲区大小
+    private Vector2Int lastCameraCellPosition; // 上次摄像头所在的单元格位置
+
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -32,6 +39,7 @@ public class Game : MonoBehaviour
     {
         board = GetComponentInChildren<Board>();
         Restart.onClick.AddListener(RestartGame);
+        lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
     }
     private void Start()
     {
@@ -50,15 +58,7 @@ public class Game : MonoBehaviour
     }
     private void GenerateCells()
     {
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                Vector3Int position = new Vector3Int(x, y, 0);
-                Cell cell = new Cell(position, Cell.Type.Empty, null);
-                state[position] = cell;
-            }
-        }
+        state = new Dictionary<Vector3Int, Cell>();
     }
     private void InitializeWithFirstClick(Vector2Int firstClick)//雷是在地图生成后产生
     {
@@ -73,7 +73,18 @@ public class Game : MonoBehaviour
                 forbiddenArea.Add(new Vector2Int(x, y));
             }
         }
-
+        // 生成实际游戏单元格（仅在被点击的区域周围）
+        for (int x = firstClick.x - 5; x <= firstClick.x + 5; x++)
+        {
+            for (int y = firstClick.y - 5; y <= firstClick.y + 5; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+                if (!state.ContainsKey(position))
+                {
+                    state[position] = new Cell(position, Cell.Type.Empty, null);
+                }
+            }
+        }
         // 步骤2: 生成候选位置
         List<Vector2Int> candidates = new List<Vector2Int>();
         for (int x = 0; x < width; x++)//遍历存入可布雷数组
@@ -157,8 +168,46 @@ public class Game : MonoBehaviour
     {
         if (!GameOver)
         {
-            Touch();
+            UpdateDynamicMap();
+            //Touch();
         }
+    }
+    private void UpdateDynamicMap()
+    {
+        // 获取摄像头中心位置对应的单元格坐标
+        Vector3 cameraCenter = Camera.main.transform.position;
+        Vector3Int cameraCellPosition = board.tilemap.WorldToCell(cameraCenter);
+
+        // 如果摄像头位置没有显著变化，则不更新地图
+        if (Mathf.Abs(cameraCellPosition.x - lastCameraCellPosition.x) < viewportWidth / 4 &&
+            Mathf.Abs(cameraCellPosition.y - lastCameraCellPosition.y) < viewportHeight / 4)
+        {
+            return;
+        }
+
+        lastCameraCellPosition = new Vector2Int(cameraCellPosition.x, cameraCellPosition.y);
+
+        // 计算需要生成的地图范围
+        int startX = cameraCellPosition.x - viewportWidth / 2 - bufferSize;
+        int endX = cameraCellPosition.x + viewportWidth / 2 + bufferSize;
+        int startY = cameraCellPosition.y - viewportHeight / 2 - bufferSize;
+        int endY = cameraCellPosition.y + viewportHeight / 2 + bufferSize;
+
+        // 清除旧的地图（仅视觉效果）
+        board.tilemap.ClearAllTiles();
+
+        // 生成新的空白地图（仅视觉效果）
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+                board.tilemap.SetTile(position, board.tileUnknown);
+            }
+        }
+
+        // 绘制实际游戏状态（已揭示的单元格等）
+        board.Draw(state);
     }
     private void Touch()
     {
@@ -600,7 +649,12 @@ public class Game : MonoBehaviour
     private Cell GetCell(int x,int y)
     {
         Vector3Int position = new Vector3Int(x, y, 0);
-        return state.TryGetValue(position, out Cell cell) ? cell : new Cell(position, Cell.Type.Invalid, null);
+        if (!state.ContainsKey(position))
+        {
+            // 如果单元格不在字典中，创建一个新的无效单元格
+            return new Cell(position, Cell.Type.Invalid, null);
+        }
+        return state[position];
     }
     private bool IsValid(int x,int y)
     {

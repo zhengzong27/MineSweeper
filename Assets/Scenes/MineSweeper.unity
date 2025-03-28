@@ -1026,10 +1026,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68470041a2f4189458ded99c314abc2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 15
-  zoomSpeed: 10
+  moveSpeed: 20
+  zoomSpeed: 5
   minZoom: 5
-  maxZoom: 20
+  maxZoom: 10
 --- !u!1 &1608041392
 GameObject:
   m_ObjectHideFlags: 0
@@ -1183,6 +1183,9 @@ MonoBehaviour:
   width: 8
   height: 16
   mineCount: 20
+  viewportWidth: 10
+  viewportHeight: 25
+  bufferSize: 1
 --- !u!1 &1997780249
 GameObject:
   m_ObjectHideFlags: 0
