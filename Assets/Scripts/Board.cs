@@ -23,13 +23,24 @@ public class Board : MonoBehaviour
     // 绘制单个单元格（根据其状态）
     public void DrawCell(Vector3Int position, Cell cell)
     {
+        if (cell.flagged)
+        {
+            tilemap.SetTile(position, tileFlag);
+            return;
+        }
+        else if (cell.questioned)
+        {
+            tilemap.SetTile(position, tileQuestion);
+            return;
+        }
+        // 常规绘制逻辑
         if (cell.revealed)
         {
             DrawRevealedCell(position, cell);
         }
         else
         {
-            DrawUnrevealedCell(position, cell);
+            tilemap.SetTile(position, tileUnknown);
         }
     }
 

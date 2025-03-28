@@ -223,18 +223,20 @@ public class Game : MonoBehaviour
             // 清除这些单元格的贴图
             foreach (Vector3Int position in cellsToUnload)
             {
+                // 仅清除贴图，不修改state字典
                 board.tilemap.SetTile(position, null);
             }
         }
-
-        // 更新活跃单元格记录
-        lastActiveCells = new HashSet<Vector3Int>(currentActiveCells);
-
         // 绘制当前活跃单元格
         foreach (Vector3Int position in currentActiveCells)
         {
-            if (state.TryGetValue(position, out Cell cell))
+            if (!state.TryGetValue(position, out Cell cell))
             {
+                // 如果单元格不存在，创建默认空单元格
+                cell = new Cell(position, Cell.Type.Empty, null);
+                state[position] = cell;
+            }
+            else { 
                 // 根据单元格状态设置贴图
                 if (cell.revealed)
                 {
@@ -270,6 +272,7 @@ public class Game : MonoBehaviour
                 }
             }
         }
+        lastActiveCells = currentActiveCells;
     }
     private void Touch()
     {
@@ -690,25 +693,21 @@ public class Game : MonoBehaviour
     {
         // 获取初始单元格
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
-        cell.flagged = !cell.flagged;
-        state[cellPosition] = cell;
-        board.DrawCell(cellPosition, cell); // 局部更新这个单元格
         // 如果单元格无效或已揭开，直接返回
         if (cell.type == Cell.Type.Invalid || cell.revealed)
         {
             return;
         }
-
-        // 切换标记状态
         cell.flagged = !cell.flagged;
-        state[cellPosition] = cell; 
-
+        state[cellPosition] = cell;
+        state[cellPosition] = cell;
+        board.DrawCell(cellPosition, cell); // 局部更新这个单元格
         // 如果标记成功，触发震动
         if (cell.flagged)
         {
             Handheld.Vibrate();
         }
-
+        board.tilemap.RefreshAllTiles();
         // 更新棋盘渲染
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
