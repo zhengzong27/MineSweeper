@@ -35,7 +35,12 @@ public class Game : MonoBehaviour
     public bool enableDynamicUnloading = true; // 是否启用动态卸载
     private HashSet<Vector3Int> activeCells = new HashSet<Vector3Int>(); // 当前活跃单元格
     private HashSet<Vector3Int> lastActiveCells = new HashSet<Vector3Int>(); // 上一次活跃单元格
-
+   
+    [Header("Block Settings")]
+    public int blockSize = 8; // 每个区块的大小（8x8格）
+    public int blockBuffer = 2; // 视野外预加载的区块数量
+    private Dictionary<Vector2Int, bool> initializedBlocks = new Dictionary<Vector2Int, bool>(); // 记录已初始化的区块
+    private Dictionary<Vector2Int, HashSet<Vector2Int>> blockMinePositions = new Dictionary<Vector2Int, HashSet<Vector2Int>>(); // 记录每个区块的地雷位置
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
