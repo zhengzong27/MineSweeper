@@ -31,6 +31,11 @@ public class Game : MonoBehaviour
     public int bufferSize = 3; // 缓冲区大小
     private Vector2Int lastCameraCellPosition; // 上次摄像头所在的单元格位置
 
+    [Header("Dynamic Map Optimization")]
+    public bool enableDynamicUnloading = true; // 是否启用动态卸载
+    private HashSet<Vector3Int> activeCells = new HashSet<Vector3Int>(); // 当前活跃单元格
+    private HashSet<Vector3Int> lastActiveCells = new HashSet<Vector3Int>(); // 上一次活跃单元格
+
     private void OnValidate()
     {
         mineCount = Mathf.Clamp(mineCount, 0, width + height);
@@ -54,7 +59,8 @@ public class Game : MonoBehaviour
         state = new Dictionary<Vector3Int, Cell>();
         GenerateCells();//只生产空白单元格，玩家第一次按下后生成地图
         Camera.main.transform.position = new Vector3(0, 0, -10f);
-        board.Draw(state);
+        lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
+        UpdateDynamicMap();
     }
     private void GenerateCells()
     {
@@ -150,7 +156,6 @@ public class Game : MonoBehaviour
                 int x = cellX + adjacentX;
                 int y = cellY + adjacentY;
 
-                // 添加边界检查
                 if (x < 0 || x >= width || y < 0 || y >= height) continue;
 
                 Vector3Int position = new Vector3Int(x, y, 0);
@@ -160,7 +165,8 @@ public class Game : MonoBehaviour
                 }
             }
         }
-        return count;
+        // 确保返回值在 1-8 之间（0会被处理为Empty类型）
+        return Mathf.Clamp(count, 0, 8);
     }
     void Update()
     {
@@ -190,26 +196,80 @@ public class Game : MonoBehaviour
         int endX = cameraCellPosition.x + viewportWidth / 2 + bufferSize;
         int startY = cameraCellPosition.y - viewportHeight / 2 - bufferSize;
         int endY = cameraCellPosition.y + viewportHeight / 2 + bufferSize;
-
-        // 清除旧的地图（仅视觉效果）
-        board.tilemap.ClearAllTiles();
-
-        // 生成新的空白地图（仅视觉效果）
+        // 记录当前活跃单元格
+        HashSet<Vector3Int> currentActiveCells = new HashSet<Vector3Int>();
         for (int x = startX; x <= endX; x++)
         {
             for (int y = startY; y <= endY; y++)
             {
                 Vector3Int position = new Vector3Int(x, y, 0);
-                board.tilemap.SetTile(position, board.tileUnknown);
+                currentActiveCells.Add(position);
+
+                // 动态生成新单元格到字典（如果不存在）
                 if (!state.ContainsKey(position))
                 {
-                    state[position] = new Cell(position, Cell.Type.Empty, null); // 实际数据部分
+                    state[position] = new Cell(position, Cell.Type.Empty, null);
                 }
             }
         }
 
-        // 绘制实际游戏状态（已揭示的单元格等）
-        board.Draw(state);
+        // 清理视野外的贴图（仅在启用动态卸载时）
+        if (enableDynamicUnloading)
+        {
+            // 计算需要清理的单元格：上一次活跃但当前不活跃的
+            HashSet<Vector3Int> cellsToUnload = new HashSet<Vector3Int>(lastActiveCells);
+            cellsToUnload.ExceptWith(currentActiveCells);
+
+            // 清除这些单元格的贴图
+            foreach (Vector3Int position in cellsToUnload)
+            {
+                board.tilemap.SetTile(position, null);
+            }
+        }
+
+        // 更新活跃单元格记录
+        lastActiveCells = new HashSet<Vector3Int>(currentActiveCells);
+
+        // 绘制当前活跃单元格
+        foreach (Vector3Int position in currentActiveCells)
+        {
+            if (state.TryGetValue(position, out Cell cell))
+            {
+                // 根据单元格状态设置贴图
+                if (cell.revealed)
+                {
+                    // 已揭开的单元格
+                    if (cell.type == Cell.Type.Mine)
+                    {
+                        board.tilemap.SetTile(position, board.tileMine);
+                    }
+                    else if (cell.type == Cell.Type.Number)
+                    {
+                        board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(position, board.tileEmpty);
+                    }
+                }
+                else
+                {
+                    // 未揭开的单元格
+                    if (cell.flagged)
+                    {
+                        board.tilemap.SetTile(position, board.tileFlag);
+                    }
+                    else if (cell.questioned)
+                    {
+                        board.tilemap.SetTile(position, board.tileQuestion);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(position, board.tileUnknown);
+                    }
+                }
+            }
+        }
     }
     private void Touch()
     {
@@ -361,9 +421,11 @@ public class Game : MonoBehaviour
         }
 
         // 切换问号标记状态
-        cell.flagged = false; // 清除插旗状态
-        cell.questioned = !cell.questioned; // 切换问号状态
-                                            // 更新单元格的 Tile
+        cell.flagged = false;
+        cell.questioned = !cell.questioned;
+        state[cellPosition] = cell;
+        board.DrawCell(cellPosition, cell); // 局部更新这个单元格
+
         if (cell.questioned)
         {
             Debug.Log("设置单元格为问号 Tile");
@@ -437,12 +499,11 @@ public class Game : MonoBehaviour
                 {
                     cell.revealed = true;
                     state[cell.position] = cell;
+                    board.DrawCell(cell.position, cell);
                     ifWin();
                 }
                 break;
         }
-        
-        board.Draw(state);
     }
     private void CheckQuickReveal(int x, int y)
     {
@@ -508,7 +569,6 @@ public class Game : MonoBehaviour
                 }
             }
             ifWin();
-            board.Draw(state);
         }
         else
         {
@@ -518,7 +578,7 @@ public class Game : MonoBehaviour
         }
     }
 
-    private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+   /* private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
     {
         Debug.Log("开始闪烁");
         int blinkCount = 2;
@@ -569,7 +629,7 @@ public class Game : MonoBehaviour
             yield return new WaitForSeconds(blinkDuration);
         }
         Debug.Log("闪烁结束");
-    }
+    }*/
     private void Explode(Cell cell)
     {
         Debug.Log("你输了!");
@@ -578,15 +638,19 @@ public class Game : MonoBehaviour
         cell.revealed = true;
         cell.exploded = true;
         state[cell.position] = cell;
+        board.DrawCell(cell.position, cell); // 更新爆炸的地雷
+
+        // 遍历所有地雷并更新
         for (int x = 0; x < width; x++)
         {
-            for(int y = 0; y < height; y++)
+            for (int y = 0; y < height; y++)
             {
                 Vector3Int pos = new Vector3Int(x, y, 0);
                 if (state.TryGetValue(pos, out Cell c) && c.type == Cell.Type.Mine)
                 {
                     c.revealed = true;
-                    state[pos] = c; // ✅ 正确更新字典
+                    state[pos] = c;
+                    board.DrawCell(pos, c); // 更新每个地雷
                 }
             }
         }
@@ -599,6 +663,7 @@ public class Game : MonoBehaviour
         Vector3Int cellPos = new Vector3Int(cell.position.x, cell.position.y, 0);
         cell.revealed = true;
         state[cellPos] = cell;  // 使用 Vector3Int 作为键
+        board.DrawCell(cellPos, cell); // 局部更新这个单元格
 
         if (cell.type == Cell.Type.Empty)
         {
@@ -620,13 +685,14 @@ public class Game : MonoBehaviour
                 }
             }
         }
-        board.Draw(state);
     }
     private void Flags(Vector3Int cellPosition)
     {
         // 获取初始单元格
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
-
+        cell.flagged = !cell.flagged;
+        state[cellPosition] = cell;
+        board.DrawCell(cellPosition, cell); // 局部更新这个单元格
         // 如果单元格无效或已揭开，直接返回
         if (cell.type == Cell.Type.Invalid || cell.revealed)
         {
@@ -644,8 +710,6 @@ public class Game : MonoBehaviour
         }
 
         // 更新棋盘渲染
-        board.Draw(state);
-
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
     private Cell GetCell(int x,int y)

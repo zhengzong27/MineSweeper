@@ -1,85 +1,97 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
-    public Tilemap tilemap { get; private set; }
-    public Tile tileUnknown;
-    public Tile tileQuestion;
-    public Tile tileRed;
-    public Tile tileEmpty;
-    public Tile tileMine;
-    public Tile tileExplode;
-    public Tile tileFlag;
-    public Tile tileNum1;
-    public Tile tileNum2;
-    public Tile tileNum3;
-    public Tile tileNum4;
-    public Tile tileNum5;
-    public Tile tileNum6;
-    public Tile tileNum7;
-    public Tile tileNum8;
+    public Tilemap tilemap; // 关联的 Tilemap 组件
 
-    private void Awake()
+    [Header("Tile Assets")]
+    public Tile tileUnknown;    // 未揭开的默认贴图
+    public Tile tileEmpty;       // 已揭开的空白贴图
+    public Tile tileMine;       // 地雷贴图
+    public Tile tileFlag;       // 旗帜贴图
+    public Tile tileQuestion;   // 问号贴图
+    public Tile tileRed;        // 红色闪烁贴图（用于错误提示）
+    public Tile[] tileNumbers;  // 数字贴图数组（索引 0~8）
+
+    // 清空所有贴图（用于重置地图）
+    public void ClearAllTiles()
     {
-        tilemap = GetComponent<Tilemap>();
+        tilemap.ClearAllTiles();
     }
-    public void Draw(Dictionary<Vector3Int,Cell>state)
-    {
-       foreach(var cell in state.Values)
-        {
-            tilemap.SetTile(cell.position, GetTile(cell));
-        }
-    }
-    private Tile GetTile(Cell cell)
+
+    // 绘制单个单元格（根据其状态）
+    public void DrawCell(Vector3Int position, Cell cell)
     {
         if (cell.revealed)
         {
-            return GetRevealedTile(cell);
-        }
-        else if (cell.flagged)
-        {
-            return tileFlag;
-        }
-        else if (cell.questioned) // 添加对 questioned 状态的检查
-        {
-            return tileQuestion;
-        }
-        else if (cell.exploded)
-        {
-            return tileExplode;
+            DrawRevealedCell(position, cell);
         }
         else
         {
-            return tileUnknown;
-        }
-    }
-    private Tile GetRevealedTile(Cell cell)
-    {
-        switch(cell.type)
-        {
-            case Cell.Type.Empty:return tileEmpty;
-            case Cell.Type.Mine:return cell.exploded ? tileExplode : tileMine;
-            case Cell.Type.Number:return GetNumberTile(cell);
-            default:return null;
-        }
-    }
-    private Tile GetNumberTile(Cell cell)
-    {
-        switch(cell.Number)
-        {
-            case 1:return tileNum1;
-            case 2: return tileNum2;
-            case 3: return tileNum3;
-            case 4: return tileNum4;
-            case 5: return tileNum5;
-            case 6: return tileNum6;
-            case 7: return tileNum7;
-            case 8: return tileNum8;
-            default: return null;
+            DrawUnrevealedCell(position, cell);
         }
     }
 
+    // 绘制已揭开的单元格
+    private void DrawRevealedCell(Vector3Int position, Cell cell)
+    {
+        if (cell.type == Cell.Type.Mine)
+        {
+            tilemap.SetTile(position, tileMine);
+        }
+        else if (cell.type == Cell.Type.Number)
+        {
+            // 添加安全检查
+            if (tileNumbers == null || tileNumbers.Length == 0)
+            {
+                Debug.LogError("TileNumbers array is not initialized!");
+                return;
+            }
+
+            // 确保数字在有效范围内 (1-8)
+            int number = Mathf.Clamp(cell.Number, 1, 8);
+            if (number >= 0 && number < tileNumbers.Length)
+            {
+                tilemap.SetTile(position, tileNumbers[number]);
+            }
+            else
+            {
+                Debug.LogError($"Invalid number index: {number}. Array length: {tileNumbers.Length}");
+                tilemap.SetTile(position, tileEmpty); // 回退到空白贴图
+            }
+        }
+        else
+        {
+            tilemap.SetTile(position, tileEmpty);
+        }
+
+        if (cell.exploded)
+        {
+            tilemap.SetTile(position, tileRed);
+        }
+    }
+
+    // 绘制未揭开的单元格
+    private void DrawUnrevealedCell(Vector3Int position, Cell cell)
+    {
+        if (cell.flagged)
+        {
+            tilemap.SetTile(position, tileFlag);
+        }
+        else if (cell.questioned)
+        {
+            tilemap.SetTile(position, tileQuestion);
+        }
+        else
+        {
+            tilemap.SetTile(position, tileUnknown);
+        }
+    }
+
+    // 清理指定位置的贴图（用于视野外单元格）
+    public void ClearTile(Vector3Int position)
+    {
+        tilemap.SetTile(position, null);
+    }
 }

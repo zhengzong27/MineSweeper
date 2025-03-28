@@ -580,21 +580,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb35c3bb2cc771446bc754ad0b041e69, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  tilemap: {fileID: 620526486}
   tileUnknown: {fileID: 11400000, guid: f5779b2c6589ec74189e9f5120eaee61, type: 2}
-  tileQuestion: {fileID: 11400000, guid: 80563f5df3778ed4c8e9ae34e7ded451, type: 2}
-  tileRed: {fileID: 11400000, guid: b959e207f808811489c5b8de882ae5db, type: 2}
   tileEmpty: {fileID: 11400000, guid: fcc7d704855c68c449116f6e29693bff, type: 2}
   tileMine: {fileID: 11400000, guid: e7078a487d45c184ab45beccf8c475f6, type: 2}
-  tileExplode: {fileID: 11400000, guid: 775999d016c4aad43b3be1a24aff923e, type: 2}
   tileFlag: {fileID: 11400000, guid: 16a43c5f4160ef74f9bf7f13e67fb476, type: 2}
-  tileNum1: {fileID: 11400000, guid: 7def72cb7fb400e4688672e23a36bc21, type: 2}
-  tileNum2: {fileID: 11400000, guid: c082d95250cb5054eb0aed2c86473b3c, type: 2}
-  tileNum3: {fileID: 11400000, guid: b38530c05b6c349489b94399548a1e2a, type: 2}
-  tileNum4: {fileID: 11400000, guid: 5f8b28a22f6797e419562ec7e1921e01, type: 2}
-  tileNum5: {fileID: 11400000, guid: c66dd24e9d185d74daabb6a3d51165a9, type: 2}
-  tileNum6: {fileID: 11400000, guid: 03dc9b344d86bd9468fbc9d7501f5e54, type: 2}
-  tileNum7: {fileID: 11400000, guid: a1dfbb2577b8e4048b5bde3fcf61d6ed, type: 2}
-  tileNum8: {fileID: 11400000, guid: 533afdfc533e4c447bf0dfa1450eb367, type: 2}
+  tileQuestion: {fileID: 11400000, guid: 80563f5df3778ed4c8e9ae34e7ded451, type: 2}
+  tileRed: {fileID: 11400000, guid: b959e207f808811489c5b8de882ae5db, type: 2}
+  tileNumbers:
+  - {fileID: 11400000, guid: fcc7d704855c68c449116f6e29693bff, type: 2}
+  - {fileID: 11400000, guid: 7def72cb7fb400e4688672e23a36bc21, type: 2}
+  - {fileID: 11400000, guid: c082d95250cb5054eb0aed2c86473b3c, type: 2}
+  - {fileID: 11400000, guid: b38530c05b6c349489b94399548a1e2a, type: 2}
+  - {fileID: 11400000, guid: 5f8b28a22f6797e419562ec7e1921e01, type: 2}
+  - {fileID: 11400000, guid: c66dd24e9d185d74daabb6a3d51165a9, type: 2}
+  - {fileID: 11400000, guid: 03dc9b344d86bd9468fbc9d7501f5e54, type: 2}
+  - {fileID: 11400000, guid: a1dfbb2577b8e4048b5bde3fcf61d6ed, type: 2}
+  - {fileID: 11400000, guid: 533afdfc533e4c447bf0dfa1450eb367, type: 2}
 --- !u!1 &879534574
 GameObject:
   m_ObjectHideFlags: 0
@@ -1182,10 +1184,11 @@ MonoBehaviour:
   TouchPosition: {x: 0, y: 0}
   width: 8
   height: 16
-  mineCount: 20
+  mineCount: 9
   viewportWidth: 10
   viewportHeight: 25
   bufferSize: 1
+  enableDynamicUnloading: 1
 --- !u!1 &1997780249
 GameObject:
   m_ObjectHideFlags: 0
