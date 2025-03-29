@@ -1028,7 +1028,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68470041a2f4189458ded99c314abc2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 20
+  moveSpeed: 25
   zoomSpeed: 5
   minZoom: 5
   maxZoom: 10
@@ -1182,13 +1182,13 @@ MonoBehaviour:
   cameraController: {fileID: 1439466343}
   Restart: {fileID: 1997780251}
   TouchPosition: {x: 0, y: 0}
-  width: 8
-  height: 16
-  mineCount: 9
   viewportWidth: 10
   viewportHeight: 25
   bufferSize: 1
   enableDynamicUnloading: 1
+  blockSize: 8
+  blockBuffer: 2
+  mineDensity: 0.15
 --- !u!1 &1997780249
 GameObject:
   m_ObjectHideFlags: 0
