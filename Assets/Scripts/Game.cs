@@ -64,42 +64,90 @@ public class Game : MonoBehaviour
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
     }
-    private void GenerateCells()
-    {
-        state = new Dictionary<Vector3Int, Cell>();
-    }
     private void InitializeWithFirstClick(Vector2Int firstClick)
     {
-        // 设置安全区域（3x3）
-        safeZone.Clear();
+        // 1. 创建3x3安全区（无限地图无需边界检查）
+        HashSet<Vector2Int> safeZone = new HashSet<Vector2Int>();
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
             {
-                safeZone.Add(new Vector2Int(firstClick.x + dx, firstClick.y + dy));
+                Vector2Int safePos = new Vector2Int(firstClick.x + dx, firstClick.y + dy);
+                safeZone.Add(safePos);
             }
         }
 
-        // 初始化点击区块及相邻区块
-        Vector2Int blockCoord = new Vector2Int(
-            Mathf.FloorToInt(firstClick.x / (float)blockSize),
-            Mathf.FloorToInt(firstClick.y / (float)blockSize));
-
-        for (int dx = -1; dx <= 1; dx++)
+        // 2. 直接移除安全区内的地雷（不重新分配）
+        foreach (Vector2Int pos in safeZone)
         {
-            for (int dy = -1; dy <= 1; dy++)
+            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+            if (state.TryGetValue(cellPos, out Cell cell) && cell.type == Cell.Type.Mine)
             {
-                InitializeBlock(new Vector2Int(blockCoord.x + dx, blockCoord.y + dy));
+                state[cellPos] = new Cell(cellPos, Cell.Type.Empty, board.tileEmpty);
+                board.tilemap.SetTile(cellPos, board.tileEmpty);
             }
         }
 
-        isInitialized = true;
+        // 3. 更新安全区及外围数字（范围：安全区向外扩展1格）
+        UpdateNumbersAroundZone(safeZone);
+
+        Debug.Log($"安全区已处理，中心位置: {firstClick}");
+    }
+    private void UpdateNumbersAroundZone(HashSet<Vector2Int> safeZone)
+    {
+        // 扩展检查安全区外围1格（无限地图无需边界检查）
+        HashSet<Vector2Int> affectedArea = new HashSet<Vector2Int>();
+        foreach (Vector2Int pos in safeZone)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    Vector2Int neighbor = new Vector2Int(pos.x + dx, pos.y + dy);
+                    affectedArea.Add(neighbor);
+                }
+            }
+        }
+
+        // 重新计算受影响单元格的数字
+        foreach (Vector2Int pos in affectedArea)
+        {
+            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+            if (!state.ContainsKey(cellPos))
+            {
+                // 如果单元格未初始化，创建默认空白单元格
+                state[cellPos] = new Cell(cellPos, Cell.Type.Empty, board.tileEmpty);
+            }
+
+            Cell cell = state[cellPos];
+            if (cell.type != Cell.Type.Mine)
+            {
+                int mines = CountAdjacentMines(cellPos);
+                cell.type = mines > 0 ? Cell.Type.Number : Cell.Type.Empty;
+                cell.Number = mines;
+                board.tilemap.SetTile(cellPos,
+                    mines > 0 ? board.tileNumbers[mines] : board.tileEmpty);
+            }
+        }
+        isInitialized =true;
     }
 
+    private int CountAdjacentMines(Vector3Int pos) {
+    int count = 0;
+    for (int dx = -1; dx <= 1; dx++) {
+        for (int dy = -1; dy <= 1; dy++) {
+            if (dx == 0 && dy == 0) continue; // 跳过自身
+            Vector3Int neighbor = new Vector3Int(pos.x + dx, pos.y + dy, 0);
+            if (state.TryGetValue(neighbor, out Cell cell) && cell.type == Cell.Type.Mine) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
     private void InitializeBlock(Vector2Int blockCoord)
     {
         if (initializedBlocks.ContainsKey(blockCoord)) return;
-
         int startX = blockCoord.x * blockSize;
         int startY = blockCoord.y * blockSize;
         int endX = startX + blockSize - 1;
@@ -111,12 +159,13 @@ public class Game : MonoBehaviour
 
         // 生成候选位置（避开区块边缘1格）
         List<Vector2Int> candidates = new List<Vector2Int>();
-        for (int x = startX + 1; x <= endX - 1; x++)
+        for (int x = startX; x <= endX; x++) // 修改为遍历整个区块范围
         {
-            for (int y = startY + 1; y <= endY - 1; y++)
+            for (int y = startY; y <= endY; y++)
             {
                 Vector2Int pos = new Vector2Int(x, y);
-                if (!safeZone.Contains(pos))
+                // 排除安全区域和已存在的地雷
+                if (!safeZone.Contains(pos) && !state.ContainsKey(new Vector3Int(x, y, 0)))
                 {
                     candidates.Add(pos);
                 }
@@ -264,12 +313,12 @@ public class Game : MonoBehaviour
         {
             UpdateDynamicMap();
             cameraController.HandleTouchInput();
-            Touch();      
+            Touch();
         }
     }
     private void UpdateDynamicMap()
     {
-        if(GameOver)
+        if (GameOver)
         {
             return;
         }
@@ -342,7 +391,8 @@ public class Game : MonoBehaviour
                 cell = new Cell(position, Cell.Type.Empty, null);
                 state[position] = cell;
             }
-            else { 
+            else
+            {
                 // 根据单元格状态设置贴图
                 if (cell.revealed)
                 {
@@ -382,7 +432,7 @@ public class Game : MonoBehaviour
     }
     private void Touch()
     {
-        if(GameOver)
+        if (GameOver)
         {
             return;
         }
@@ -577,9 +627,8 @@ public class Game : MonoBehaviour
 
         if (!isInitialized)
         {
-            // 首次点击时初始化地图
+            Debug.Log("初次点击");
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
-            isInitialized = true;
         }
 
         if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
@@ -784,7 +833,7 @@ public class Game : MonoBehaviour
                     int y = cell.position.y + dy;
 
                     { // 自动调用新的区块检查
-                                       if (IsValid(x, y))
+                        if (IsValid(x, y))
                         {
                             Cell neighbor = GetCell(x, y);
                             Flood(neighbor);
@@ -792,9 +841,9 @@ public class Game : MonoBehaviour
                     }
                 }
             }
-        } 
+        }
     }
-        private void Flags(Vector3Int cellPosition)
+    private void Flags(Vector3Int cellPosition)
     {
         // 获取初始单元格
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
@@ -816,7 +865,7 @@ public class Game : MonoBehaviour
         // 更新棋盘渲染
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
-    private Cell GetCell(int x,int y)
+    private Cell GetCell(int x, int y)
     {
         Vector3Int position = new Vector3Int(x, y, 0);
         if (!state.ContainsKey(position))
