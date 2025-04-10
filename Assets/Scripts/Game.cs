@@ -256,14 +256,23 @@ public class Game : MonoBehaviour
     }
     void Update()
     {
+        if (GameOver)
+        {
+            return;
+        }
         if (!GameOver)
         {
             UpdateDynamicMap();
-            Touch();
+            cameraController.HandleTouchInput();
+            Touch();      
         }
     }
     private void UpdateDynamicMap()
     {
+        if(GameOver)
+        {
+            return;
+        }
         // 获取摄像头中心位置对应的单元格坐标
         Vector3 cameraCenter = Camera.main.transform.position;
         Vector3Int cameraCellPosition = board.tilemap.WorldToCell(cameraCenter);
@@ -373,10 +382,13 @@ public class Game : MonoBehaviour
     }
     private void Touch()
     {
+        if(GameOver)
+        {
+            return;
+        }
         if (Input.touchCount > 0) // 检查是否有触摸点
         {
             Touch touch = Input.GetTouch(0); // 获取第一个触摸点
-
             switch (touch.phase)
             {
                 case TouchPhase.Began:
@@ -396,13 +408,11 @@ public class Game : MonoBehaviour
                         initialTouchPosition = TouchPosition;
                         initialCellPosition = cellPosition;
                         isCircleActive = true; // 允许 Circle 出现
-                        Debug.Log("触摸到未揭开的单元格，允许 Circle 出现");
                     }
                     else // 如果单元格已揭开或无效
                     {
                         // 禁止 Circle 出现
                         isCircleActive = false;
-                        Debug.Log("触摸到已揭开的单元格，禁止 Circle 出现");
                     }
                     break;
 
@@ -422,10 +432,6 @@ public class Game : MonoBehaviour
                     {
                         // 检测滑动方向
                         DetectSwipe(touch.position);
-                    }
-                    else
-                    {
-                        cameraController.HandleTouchInput();
                     }
                     break;
 
@@ -679,69 +685,68 @@ public class Game : MonoBehaviour
         }
     }
 
-   /* private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
-    {
-        Debug.Log("开始闪烁");
-        int blinkCount = 2;
-        float blinkDuration = 0.05f;
+    /* private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+     {
+         Debug.Log("开始闪烁");
+         int blinkCount = 2;
+         float blinkDuration = 0.05f;
 
-        // 保存闪烁前的 Tile
-    Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
-        foreach (var pos in cellsToBlink)
-        {
-            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
-            if (!state.TryGetValue(cellPos, out Cell cell) || cell.tile == null)
-            {
-                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null or cell not found!");
-                continue;
-            }
+         // 保存闪烁前的 Tile
+     Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
+         foreach (var pos in cellsToBlink)
+         {
+             Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+             if (!state.TryGetValue(cellPos, out Cell cell) || cell.tile == null)
+             {
+                 Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null or cell not found!");
+                 continue;
+             }
 
-            previousTiles[pos] = cell.tile; // 保存原始 Tile
-            Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
-        }
+             previousTiles[pos] = cell.tile; // 保存原始 Tile
+             Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
+         }
 
-        // 闪烁逻辑
-        for (int i = 0; i < blinkCount; i++)
-        {
-            Debug.Log("设置为红色 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                Debug.Log("变成红色！！！");
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 替换为红色 Tile
-            }
-            board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
-            yield return new WaitForSeconds(blinkDuration);
-            Debug.Log("恢复成闪烁前的 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                if (!previousTiles.TryGetValue(pos, out Tile originalTile))
-                    continue;
+         // 闪烁逻辑
+         for (int i = 0; i < blinkCount; i++)
+         {
+             Debug.Log("设置为红色 Tile");
+             foreach (var pos in cellsToBlink)
+             {
+                 Debug.Log("变成红色！！！");
+                 board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 替换为红色 Tile
+             }
+             board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
+             yield return new WaitForSeconds(blinkDuration);
+             Debug.Log("恢复成闪烁前的 Tile");
+             foreach (var pos in cellsToBlink)
+             {
+                 if (!previousTiles.TryGetValue(pos, out Tile originalTile))
+                     continue;
 
-                Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
-                if (state.TryGetValue(cellPos, out Cell cell))
-                {
-                    cell.tile = originalTile;
-                    state[cellPos] = cell;
-                    board.tilemap.SetTile(cellPos, originalTile);
-                    board.tilemap.RefreshTile(cellPos);
-                }
-            }
-            board.Draw(state);
-            yield return new WaitForSeconds(blinkDuration);
-        }
-        Debug.Log("闪烁结束");
-    }*/
+                 Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+                 if (state.TryGetValue(cellPos, out Cell cell))
+                 {
+                     cell.tile = originalTile;
+                     state[cellPos] = cell;
+                     board.tilemap.SetTile(cellPos, originalTile);
+                     board.tilemap.RefreshTile(cellPos);
+                 }
+             }
+             board.Draw(state);
+             yield return new WaitForSeconds(blinkDuration);
+         }
+         Debug.Log("闪烁结束");
+     }*/
     private void Explode(Cell cell)
     {
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
-        GameOver = true;
+        GameOver = true; // 游戏结束标志
         cell.revealed = true;
         cell.exploded = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell); // 更新爆炸的地雷
-
-        // 遍历所有区块中的地雷（不再依赖width/height）
+                                             // 遍历所有区块中的地雷（不再依赖width/height）
         foreach (var block in blockMinePositions.Values)
         {
             foreach (Vector2Int minePos in block)
@@ -756,6 +761,7 @@ public class Game : MonoBehaviour
             }
         }
     }
+
     private void Flood(Cell cell)
     {
         if (cell.revealed || cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged)
@@ -880,7 +886,6 @@ public class Game : MonoBehaviour
     {
         GameOver = false;
         Restart.gameObject.SetActive(false); // 隐藏按钮
-
         NewGame();
     }
 }

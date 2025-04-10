@@ -12,16 +12,12 @@ public class CameraController : MonoBehaviour
     private Camera controlledCamera;
     private Vector3 lastTouchPosition;
     private bool isDragging = false;
-
     private void Awake()
     {
         controlledCamera = GetComponent<Camera>();
     }
 
-    private void Update()
-    {
-        HandleTouchInput();
-    }
+
 
     /// <summary>
     /// ¥¶¿Ì¥•√˛ ‰»Î
