@@ -3,26 +3,28 @@ using UnityEngine.Tilemaps;
 
 public class Board : MonoBehaviour
 {
-    public Tilemap tilemap; // ¹ØÁªµÄ Tilemap ×é¼ş
+    public Tilemap tilemap; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Tilemap ï¿½ï¿½ï¿½
 
     [Header("Tile Assets")]
-    public Tile tileUnknown;    // Î´½Ò¿ªµÄÄ¬ÈÏÌùÍ¼
-    public Tile tileEmpty;       // ÒÑ½Ò¿ªµÄ¿Õ°×ÌùÍ¼
-    public Tile tileMine;       // µØÀ×ÌùÍ¼
-    public Tile tileFlag;       // ÆìÖÄÌùÍ¼
-    public Tile tileQuestion;   // ÎÊºÅÌùÍ¼
-    public Tile tileRed;        // ºìÉ«ÉÁË¸ÌùÍ¼£¨ÓÃÓÚ´íÎóÌáÊ¾£©
-    public Tile[] tileNumbers;  // Êı×ÖÌùÍ¼Êı×é£¨Ë÷Òı 0~8£©
+    public Tile tileUnknown;    // Î´ï¿½Ò¿ï¿½ï¿½ï¿½Ä¬ï¿½ï¿½ï¿½ï¿½Í¼
+    public Tile tileEmpty;       // ï¿½Ñ½Ò¿ï¿½ï¿½Ä¿Õ°ï¿½ï¿½ï¿½Í¼
+    public Tile tileMine;       // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼
+    public Tile tileFlag;       // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼
+    public Tile tileQuestion;   // ï¿½Êºï¿½ï¿½ï¿½Í¼
+    public Tile tileRed;        // ï¿½ï¿½É«ï¿½ï¿½Ë¸ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½Ú´ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½
+    public Tile[] tileNumbers;  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½é£¨ï¿½ï¿½ï¿½ï¿½ 0~8ï¿½ï¿½
 
-    // Çå¿ÕËùÓĞÌùÍ¼£¨ÓÃÓÚÖØÖÃµØÍ¼£©
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ãµï¿½Í¼ï¿½ï¿½
     public void ClearAllTiles()
     {
         tilemap.ClearAllTiles();
     }
 
-    // »æÖÆµ¥¸öµ¥Ôª¸ñ£¨¸ù¾İÆä×´Ì¬£©
+    // ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½ï¿½ï¿½Ôªï¿½ñ£¨¸ï¿½ï¿½ï¿½ï¿½ï¿½×´Ì¬ï¿½ï¿½
     public void DrawCell(Vector3Int position, Cell cell)
     {
+        Debug.Log($"Drawing cell at {position}, type: {cell.type}, revealed: {cell.revealed}");
+        
         if (cell.flagged)
         {
             tilemap.SetTile(position, tileFlag);
@@ -33,7 +35,7 @@ public class Board : MonoBehaviour
             tilemap.SetTile(position, tileQuestion);
             return;
         }
-        // ³£¹æ»æÖÆÂß¼­
+        // ß¼ï¿½
         if (cell.revealed)
         {
             DrawRevealedCell(position, cell);
@@ -44,46 +46,68 @@ public class Board : MonoBehaviour
         }
     }
 
-    // »æÖÆÒÑ½Ò¿ªµÄµ¥Ôª¸ñ
+    // ï¿½ï¿½ï¿½ï¿½ï¿½Ñ½Ò¿ï¿½ï¿½Äµï¿½Ôªï¿½ï¿½
     private void DrawRevealedCell(Vector3Int position, Cell cell)
     {
+        Debug.Log($"Drawing revealed cell at {position}, type: {cell.type}");
+        
         if (cell.type == Cell.Type.Mine)
         {
+            if (tileMine == null)
+            {
+                Debug.LogError("tileMine is not assigned!");
+                return;
+            }
             tilemap.SetTile(position, tileMine);
         }
         else if (cell.type == Cell.Type.Number)
         {
-            // Ìí¼Ó°²È«¼ì²é
+            // ï¿½ï¿½ï¿½Ó°ï¿½È«ï¿½ï¿½ï¿½
             if (tileNumbers == null || tileNumbers.Length == 0)
             {
                 Debug.LogError("TileNumbers array is not initialized!");
                 return;
             }
 
-            // È·±£Êı×ÖÔÚÓĞĞ§·¶Î§ÄÚ (1-8)
+            // È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ğ§ï¿½ï¿½Î§ï¿½ï¿½ (1-8)
             int number = Mathf.Clamp(cell.Number, 1, 8);
             if (number >= 0 && number < tileNumbers.Length)
             {
+                if (tileNumbers[number] == null)
+                {
+                    Debug.LogError($"tileNumbers[{number}] is not assigned!");
+                    return;
+                }
                 tilemap.SetTile(position, tileNumbers[number]);
             }
             else
             {
                 Debug.LogError($"Invalid number index: {number}. Array length: {tileNumbers.Length}");
-                tilemap.SetTile(position, tileEmpty); // »ØÍËµ½¿Õ°×ÌùÍ¼
+                tilemap.SetTile(position, tileEmpty); // ï¿½ï¿½ï¿½Ëµï¿½ï¿½Õ°ï¿½ï¿½ï¿½Í¼
             }
         }
         else
         {
+            if (tileEmpty == null)
+            {
+                Debug.LogError("tileEmpty is not assigned!");
+                return;
+            }
             tilemap.SetTile(position, tileEmpty);
         }
 
         if (cell.exploded)
         {
+            if (tileRed == null)
+            {
+                Debug.LogError("tileRed is not assigned!");
+                return;
+            }
             tilemap.SetTile(position, tileRed);
         }
     }
 
-    // »æÖÆÎ´½Ò¿ªµÄµ¥Ôª¸ñ
+    // ï¿½ï¿½ï¿½ï¿½Î´ï¿½Ò¿ï¿½ï¿½Äµï¿½Ôªï¿½ï¿½
     private void DrawUnrevealedCell(Vector3Int position, Cell cell)
     {
         if (cell.flagged)
@@ -100,7 +124,7 @@ public class Board : MonoBehaviour
         }
     }
 
-    // ÇåÀíÖ¸¶¨Î»ÖÃµÄÌùÍ¼£¨ÓÃÓÚÊÓÒ°Íâµ¥Ôª¸ñ£©
+    // ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½Î»ï¿½Ãµï¿½ï¿½ï¿½Í¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò°ï¿½âµ¥Ôªï¿½ï¿½
     public void ClearTile(Vector3Int position)
     {
         tilemap.SetTile(position, null);

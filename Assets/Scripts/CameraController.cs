@@ -16,9 +16,6 @@ public class CameraController : MonoBehaviour
     {
         controlledCamera = GetComponent<Camera>();
     }
-
-
-
     /// <summary>
     /// ¥¶¿Ì¥•√˛ ‰»Î
     /// </summary>
