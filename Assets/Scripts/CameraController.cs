@@ -18,17 +18,9 @@ public class CameraController : MonoBehaviour
         controlledCamera = GetComponent<Camera>();
     }
 
-    private void Update()
-    {
-        HandleTouchInput();
-    }
-
-    /// <summary>
-    /// ´¦Àí´¥ÃşÊäÈë
-    /// </summary>
     public void HandleTouchInput()
     {
-        if (Input.touchCount == 1) // µ¥Ö¸ÍÏ¶¯
+        if (Input.touchCount == 1) // å•æŒ‡è§¦æ‘¸
         {
             Touch touch = Input.GetTouch(0);
 
@@ -55,7 +47,7 @@ public class CameraController : MonoBehaviour
                     break;
             }
         }
-        else if (Input.touchCount == 2) // Ë«Ö¸Ëõ·Å
+        else if (Input.touchCount == 2) // åŒæŒ‡è§¦æ‘¸
         {
             Touch touchZero = Input.GetTouch(0);
             Touch touchOne = Input.GetTouch(1);
@@ -72,7 +64,7 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// Æ½»¬ÒÆ¶¯ÉãÏñ»ú
+    /// å¹³ç§»ç§»åŠ¨
     /// </summary>
     private void MoveCamera(Vector3 direction)
     {
@@ -80,7 +72,7 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// Æ½»¬Ëõ·ÅÉãÏñ»ú
+    /// å¹³ç§»ç¼©æ”¾
     /// </summary>
     private void ZoomCamera(float increment)
     {
@@ -89,7 +81,7 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// ÆÁÄ»×ø±ê×ªÊÀ½ç×ø±ê
+    /// å±å¹•è½¬æ¢ä¸ºä¸–ç•Œåæ ‡
     /// </summary>
     private Vector3 GetWorldPosition(Vector2 screenPosition)
     {
@@ -99,7 +91,7 @@ public class CameraController : MonoBehaviour
     #region Public Interface
 
     /// <summary>
-    /// ÉèÖÃÉãÏñ»úÒÆ¶¯ËÙ¶È
+    /// è®¾ç½®ç§»åŠ¨é€Ÿåº¦
     /// </summary>
     public void SetMoveSpeed(float speed)
     {
@@ -107,7 +99,7 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// ÉèÖÃÉãÏñ»úËõ·ÅËÙ¶È
+    /// è®¾ç½®ç¼©æ”¾é€Ÿåº¦
     /// </summary>
     public void SetZoomSpeed(float speed)
     {
@@ -115,7 +107,7 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// ÉèÖÃÉãÏñ»úËõ·Å·¶Î§
+    /// è®¾ç½®ç¼©æ”¾èŒƒå›´
     /// </summary>
     public void SetZoomRange(float min, float max)
     {

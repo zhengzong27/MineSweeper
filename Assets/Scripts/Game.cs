@@ -10,7 +10,7 @@ public class Game : MonoBehaviour
     public GameObject circle; // 拖拽 Circle 的 GameObject 到这里
     public CameraController cameraController;
     public Button Restart;
-    private bool GameOver;
+    public bool GameOver { get; private set; } // 修改为属性，只允许在Game类内部设置
     private bool isCircleActive = false; // Circle 是否已激活isCir
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
@@ -258,8 +258,18 @@ public class Game : MonoBehaviour
     {
         if (!GameOver)
         {
+            cameraController.HandleTouchInput();
             UpdateDynamicMap();
             Touch();
+        }
+        else
+        {
+            // 游戏结束时禁用所有操作
+            circle.SetActive(false);
+            isCircleActive = false;
+            isTouching = false;
+            touchTime = 0f;
+            swipeDirection = SwipeDirection.None;
         }
     }
     private void UpdateDynamicMap()
@@ -373,6 +383,8 @@ public class Game : MonoBehaviour
     }
     private void Touch()
     {
+        if (GameOver) return; // 游戏结束时直接返回，不处理任何触摸操作
+
         if (Input.touchCount > 0) // 检查是否有触摸点
         {
             Touch touch = Input.GetTouch(0); // 获取第一个触摸点
@@ -423,7 +435,7 @@ public class Game : MonoBehaviour
                         // 检测滑动方向
                         DetectSwipe(touch.position);
                     }
-                    else
+                    else if (!GameOver) // 如果游戏未结束，允许相机控制
                     {
                         cameraController.HandleTouchInput();
                     }
