@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using UnityEngine.UI;
 using UnityEngine.Tilemaps;
 
@@ -42,11 +43,19 @@ public class Game : MonoBehaviour
     private HashSet<Vector2Int> safeZone = new HashSet<Vector2Int>(); // 首次点击的安全区域
     private int score = 0; // 当前游戏积分
 
+    [Header("UI Elements")]
+    public TMP_Text scoreText; // 积分显示文本
+    public TMP_Text highScoreText; // 最高分显示文本
+    private int highScore = 0; // 最高分记录
+
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
         Restart.onClick.AddListener(RestartGame);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
+        // 加载最高分
+        highScore = PlayerPrefs.GetInt("HighScore", 0);
+        UpdateScoreUI();
     }
     private void Start()
     {
@@ -919,7 +928,29 @@ public class Game : MonoBehaviour
         if (newScore != score)
         {
             score = newScore;
+            // 更新最高分
+            if (score > highScore)
+            {
+                highScore = score;
+                PlayerPrefs.SetInt("HighScore", highScore);
+                PlayerPrefs.Save();
+            }
+            // 更新UI显示
+            UpdateScoreUI();
             Debug.Log($"当前积分: {score}");
+        }
+    }
+
+    // 更新积分UI显示
+    private void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = $"当前积分: {score}";
+        }
+        if (highScoreText != null)
+        {
+            highScoreText.text = $"最高分: {highScore}";
         }
     }
 }
