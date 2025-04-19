@@ -256,9 +256,14 @@ public class Game : MonoBehaviour
     }
     void Update()
     {
-        if (!GameOver)
+        if (!GameOver && !isCircleActive) // 如果游戏未结束且Circle未激活
         {
             cameraController.HandleTouchInput();
+            UpdateDynamicMap();
+            Touch();
+        }
+        else if (!GameOver) // 如果游戏未结束但Circle激活
+        {
             UpdateDynamicMap();
             Touch();
         }
@@ -435,7 +440,7 @@ public class Game : MonoBehaviour
                         // 检测滑动方向
                         DetectSwipe(touch.position);
                     }
-                    else if (!GameOver) // 如果游戏未结束，允许相机控制
+                    else if (!GameOver && !isCircleActive) // 如果游戏未结束且Circle未激活，允许相机控制
                     {
                         cameraController.HandleTouchInput();
                     }
