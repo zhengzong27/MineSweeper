@@ -40,6 +40,7 @@ public class Game : MonoBehaviour
     private Dictionary<Vector2Int, bool> initializedBlocks = new Dictionary<Vector2Int, bool>();
     private Dictionary<Vector2Int, HashSet<Vector2Int>> blockMinePositions = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
     private HashSet<Vector2Int> safeZone = new HashSet<Vector2Int>(); // 首次点击的安全区域
+    private int score = 0; // 当前游戏积分
 
     private void Awake()
     {
@@ -61,6 +62,7 @@ public class Game : MonoBehaviour
         initializedBlocks.Clear();
         blockMinePositions.Clear();
         safeZone.Clear();
+        score = 0; // 重置积分
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
     }
@@ -605,6 +607,7 @@ public class Game : MonoBehaviour
                 break;
             case Cell.Type.Empty:
                 Flood(cell);
+                UpdateScore(); // 更新积分
                 ifWin();
                 break;
             case Cell.Type.Number: // 新增快速揭开逻辑
@@ -618,6 +621,7 @@ public class Game : MonoBehaviour
                     cell.revealed = true;
                     state[cell.position] = cell;
                     board.DrawCell(cell.position, cell);
+                    UpdateScore(); // 更新积分
                     ifWin();
                 }
                 break;
@@ -899,6 +903,24 @@ public class Game : MonoBehaviour
         Restart.gameObject.SetActive(false); // 隐藏按钮
 
         NewGame();
+    }
+
+    // 更新积分的方法
+    private void UpdateScore()
+    {
+        int newScore = 0;
+        foreach (var cell in state.Values)
+        {
+            if (cell.revealed && cell.type == Cell.Type.Number)
+            {
+                newScore += cell.Number;
+            }
+        }
+        if (newScore != score)
+        {
+            score = newScore;
+            Debug.Log($"当前积分: {score}");
+        }
     }
 }
 
