@@ -9,11 +9,9 @@ using UnityEngine.EventSystems;
 public class Game : MonoBehaviour
 {
     private bool isInitialized = false;
-    public GameObject circle; // 拖拽 Circle 的 GameObject 到这里
     public CameraController cameraController;
     public Button Restart;
-    public bool GameOver { get; private set; } // 修改为属性，只允许在Game类内部设置
-    private bool isCircleActive = false; // Circle 是否已激活isCir
+    public bool GameOver { get; private set; }
     float touchTime = 0f; // 触摸持续时间
     bool isTouching = false;
     public Vector2 TouchPosition;//按压位置
@@ -21,8 +19,6 @@ public class Game : MonoBehaviour
     private Dictionary<Vector3Int, Cell> state;
     private Vector2 initialTouchPosition; // 初始触摸位置
     private Vector3Int initialCellPosition; // 初始单元格位置
-    private enum SwipeDirection { None, Up, Down } // 滑动方向枚举
-    private SwipeDirection swipeDirection = SwipeDirection.None; // 当前滑动方向
 
     [Header("Dynamic Map Settings")]
     public int viewportWidth = 8; // 摄像头可见宽度
@@ -50,25 +46,32 @@ public class Game : MonoBehaviour
     private int highScore = 0; // 最高分记录
     public Image repositionButton; // 视角回调按钮
     private Vector3 lastOperationPosition; // 记录最后一次操作位置
+    [SerializeField] private Image itemButton; // Item按钮
+    [SerializeField] private Menu menuManager; // Menu管理器
 
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
         Restart.onClick.AddListener(RestartGame);
         repositionButton.GetComponent<Button>().onClick.AddListener(RepositionCamera);
+        
+        // 设置Item按钮点击事件
+        if (itemButton != null && itemButton.GetComponent<Button>() != null)
+        {
+            itemButton.GetComponent<Button>().onClick.AddListener(ItemOpen);
+        }
+
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
-        // 加载最高分
-        highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateScoreUI();
-        // 添加视角回调按钮的点击事件
     }
+
     private void Start()
     {
         NewGame();
     }
+
     private void NewGame()
     {
-        circle.SetActive(false);
         isInitialized = false;
         GameOver = false;
         Restart.gameObject.SetActive(false);
@@ -81,215 +84,95 @@ public class Game : MonoBehaviour
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
     }
-    private void InitializeWithFirstClick(Vector2Int firstClick)
-    {
-        // 设置安全区域（3x3）
-        safeZone.Clear();
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                safeZone.Add(new Vector2Int(firstClick.x + dx, firstClick.y + dy));
-            }
-        }
 
-        // 初始化点击区块及相邻区块
-        Vector2Int blockCoord = new Vector2Int(
-            Mathf.FloorToInt(firstClick.x / (float)blockSize),
-            Mathf.FloorToInt(firstClick.y / (float)blockSize));
-
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                InitializeBlock(new Vector2Int(blockCoord.x + dx, blockCoord.y + dy));
-            }
-        }
-
-        isInitialized = true;
-    }
-
-    private void InitializeBlock(Vector2Int blockCoord)
-    {
-        if (initializedBlocks.ContainsKey(blockCoord)) return;
-
-        int startX = blockCoord.x * blockSize;
-        int startY = blockCoord.y * blockSize;
-        int endX = startX + blockSize - 1;
-        int endY = startY + blockSize - 1;
-
-        // 计算本区块地雷数量（基于密度）
-        int blockMineCount = Mathf.RoundToInt(blockSize * blockSize * mineDensity);
-        blockMineCount = Mathf.Max(1, blockMineCount);
-
-        // 生成候选位置（避开区块边缘1格）
-        List<Vector2Int> candidates = new List<Vector2Int>();
-        for (int x = startX + 1; x <= endX - 1; x++)
-        {
-            for (int y = startY + 1; y <= endY - 1; y++)
-            {
-                Vector2Int pos = new Vector2Int(x, y);
-                if (!safeZone.Contains(pos))
-                {
-                    candidates.Add(pos);
-                }
-            }
-        }
-
-        // 随机布雷
-        System.Random rng = new System.Random();
-        HashSet<Vector2Int> minesInBlock = new HashSet<Vector2Int>();
-
-        for (int i = 0; i < Mathf.Min(blockMineCount, candidates.Count); i++)
-        {
-            int index = rng.Next(i, candidates.Count);
-            Vector2Int temp = candidates[i];
-            candidates[i] = candidates[index];
-            candidates[index] = temp;
-
-            Vector2Int minePos = candidates[i];
-            minesInBlock.Add(minePos);
-
-            // 初始化地雷单元格
-            Vector3Int position = new Vector3Int(minePos.x, minePos.y, 0);
-            state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
-        }
-
-        // 记录本区块地雷位置
-        blockMinePositions[blockCoord] = minesInBlock;
-        initializedBlocks[blockCoord] = true;
-
-        // 计算本区块数字
-        CalculateNumbersInBlock(blockCoord);
-
-        // 更新相邻区块边缘数字
-        UpdateAdjacentBlocksNumbers(blockCoord);
-    }
-    private bool IsForbiddenPosition(Vector2Int pos)
-    {
-        // 检查是否在任何区块的安全区域内
-        Vector2Int blockPos = new Vector2Int(
-            Mathf.FloorToInt(pos.x / (float)blockSize),
-            Mathf.FloorToInt(pos.y / (float)blockSize));
-
-        if (blockMinePositions.TryGetValue(blockPos, out HashSet<Vector2Int> forbiddenPositions))
-        {
-            return forbiddenPositions.Contains(pos);
-        }
-        return false;
-    }
-
-    private void CalculateNumbersInBlock(Vector2Int blockCoord)
-    {
-        int startX = blockCoord.x * blockSize;
-        int startY = blockCoord.y * blockSize;
-        int endX = startX + blockSize - 1;
-        int endY = startY + blockSize - 1;
-
-        for (int x = startX; x <= endX; x++)
-        {
-            for (int y = startY; y <= endY; y++)
-            {
-                Vector3Int position = new Vector3Int(x, y, 0);
-
-                // 只处理非地雷单元格
-                if (!state.ContainsKey(position) || state[position].type != Cell.Type.Mine)
-                {
-                    int count = CountAdjacentMines(x, y);
-                    Cell cell = new Cell(position,
-                                       count > 0 ? Cell.Type.Number : Cell.Type.Empty,
-                                       count > 0 ? board.tileNumbers[count] : board.tileEmpty);
-                    cell.Number = count;
-                    state[position] = cell;
-                }
-            }
-        }
-    }
-    private int CountAdjacentMines(int x, int y)
-    {
-        int count = 0;
-
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                int checkX = x + dx;
-                int checkY = y + dy;
-                Vector3Int pos = new Vector3Int(checkX, checkY, 0);
-
-                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
-                {
-                    count++;
-                }
-            }
-        }
-
-        return count;
-    }
-    private void UpdateAdjacentBlocksNumbers(Vector2Int blockCoord)
-    {
-        // 更新相邻区块边缘数字
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
-                if (initializedBlocks.ContainsKey(adjacentBlock))
-                {
-                    CalculateNumbersInBlock(adjacentBlock);
-                }
-            }
-        }
-    }
-    private int CountMines(int cellX, int cellY)
-    {
-        int count = 0;
-        for (int adjacentX = -1; adjacentX <= 1; adjacentX++)
-        {
-            for (int adjacentY = -1; adjacentY <= 1; adjacentY++)
-            {
-                if (adjacentX == 0 && adjacentY == 0) continue;
-
-                int x = cellX + adjacentX;
-                int y = cellY + adjacentY;
-                if (!IsValid(x, y)) continue; // 动态区块检查
-
-                Vector3Int position = new Vector3Int(x, y, 0);
-                if (state.TryGetValue(position, out Cell cell) && cell.type == Cell.Type.Mine)
-                {
-                    count++;
-                }
-            }
-        }
-        return count;
-    }
     void Update()
     {
-        if (!GameOver && !isCircleActive) // 如果游戏未结束且Circle未激活
+        if (!GameOver && (menuManager == null || !menuManager.IsMenuActive())) // 游戏未结束且菜单未打开时
         {
             cameraController.HandleTouchInput();
             UpdateDynamicMap();
             Touch();
         }
-        else if (!GameOver) // 如果游戏未结束但Circle激活
+        else if (!GameOver) // 游戏未结束但菜单打开时
         {
             UpdateDynamicMap();
-            Touch();
         }
         else
         {
             // 游戏结束时禁用所有操作
-            circle.SetActive(false);
-            isCircleActive = false;
             isTouching = false;
             touchTime = 0f;
-            swipeDirection = SwipeDirection.None;
         }
     }
+
+    private void Touch()
+    {
+        if (GameOver) return; // 游戏结束时直接返回，不处理任何触摸操作
+
+        // 检查是否点击了UI
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            return; // 如果点击了UI，直接返回，不处理游戏操作
+        }
+
+        if (Input.touchCount > 0) // 检查是否有触摸点
+        {
+            Touch touch = Input.GetTouch(0); // 获取第一个触摸点
+
+            switch (touch.phase)
+            {
+                case TouchPhase.Began:
+                    isTouching = true;
+                    touchTime = Time.time; // 记录触摸开始时间
+                    TouchPosition = touch.position;
+
+                    // 检测触摸位置对应的单元格
+                    Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+                    Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
+                    Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+                    if (cell.type != Cell.Type.Invalid && !cell.revealed) // 如果单元格未揭开
+                    {
+                        // 记录初始触摸位置和单元格
+                        initialTouchPosition = TouchPosition;
+                        initialCellPosition = cellPosition;
+                    }
+                    break;
+
+                case TouchPhase.Stationary:
+                    if (isTouching && Time.time - touchTime >= 0.25f) // 触摸时间大于等于 0.25 秒
+                    {
+                        // 执行插旗操作
+                        Flags(initialCellPosition);
+                        isTouching = false; // 重置触摸状态
+                    }
+                    break;
+
+                case TouchPhase.Moved:
+                    if (!GameOver) // 如果游戏未结束，允许相机控制
+                    {
+                        cameraController.HandleTouchInput();
+                    }
+                    break;
+
+                case TouchPhase.Ended:
+                    if (isTouching)
+                    {
+                        if (Time.time - touchTime < 0.25f) // 短按操作
+                        {
+                            Reveal(); // 点击操作
+                        }
+                    }
+                    isTouching = false; // 重置状态
+                    break;
+
+                case TouchPhase.Canceled:
+                    isTouching = false;
+                    break;
+            }
+        }
+    }
+
     private void UpdateDynamicMap()
     {
         // 获取摄像头中心位置对应的单元格坐标
@@ -399,206 +282,198 @@ public class Game : MonoBehaviour
         }
         lastActiveCells = currentActiveCells;
     }
-    private void Touch()
-    {
-        if (GameOver) return; // 游戏结束时直接返回，不处理任何触摸操作
 
-        // 检查是否点击了UI
-        if (EventSystem.current.IsPointerOverGameObject())
+    private void InitializeWithFirstClick(Vector2Int firstClick)
+    {
+        // 设置安全区域（3x3）
+        safeZone.Clear();
+        for (int dx = -1; dx <= 1; dx++)
         {
-            return; // 如果点击了UI，直接返回，不处理游戏操作
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                safeZone.Add(new Vector2Int(firstClick.x + dx, firstClick.y + dy));
+            }
         }
 
-        if (Input.touchCount > 0) // 检查是否有触摸点
+        // 初始化点击区块及相邻区块
+        Vector2Int blockCoord = new Vector2Int(
+            Mathf.FloorToInt(firstClick.x / (float)blockSize),
+            Mathf.FloorToInt(firstClick.y / (float)blockSize));
+
+        for (int dx = -1; dx <= 1; dx++)
         {
-            Touch touch = Input.GetTouch(0); // 获取第一个触摸点
-
-            switch (touch.phase)
+            for (int dy = -1; dy <= 1; dy++)
             {
-                case TouchPhase.Began:
-                    isTouching = true;
-                    touchTime = Time.time; // 记录触摸开始时间
-                    TouchPosition = touch.position;
-                    swipeDirection = SwipeDirection.None; // 重置滑动方向
+                InitializeBlock(new Vector2Int(blockCoord.x + dx, blockCoord.y + dy));
+            }
+        }
 
-                    // 检测触摸位置对应的单元格是否已揭开
-                    Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
-                    Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
-                    Cell cell = GetCell(cellPosition.x, cellPosition.y);
+        isInitialized = true;
+    }
 
-                    if (cell.type != Cell.Type.Invalid && !cell.revealed) // 如果单元格未揭开
-                    {
-                        // 记录初始触摸位置和单元格
-                        initialTouchPosition = TouchPosition;
-                        initialCellPosition = cellPosition;
-                        isCircleActive = true; // 允许 Circle 出现
-                        Debug.Log("触摸到未揭开的单元格，允许 Circle 出现");
-                    }
-                    else // 如果单元格已揭开或无效
-                    {
-                        // 禁止 Circle 出现
-                        isCircleActive = false;
-                        Debug.Log("触摸到已揭开的单元格，禁止 Circle 出现");
-                    }
-                    break;
+    private void InitializeBlock(Vector2Int blockCoord)
+    {
+        if (initializedBlocks.ContainsKey(blockCoord)) return;
 
-                case TouchPhase.Stationary:
-                    if (isTouching && isCircleActive && Time.time - touchTime >= 0.25f) // 触摸时间大于等于 0.25 秒
-                    {
-                        // 设置 Circle 的位置（基于初始触摸位置）
-                        SetCirclePosition(initialTouchPosition);
-                        // 激活 Circle
-                        circle.SetActive(true);
-                        Debug.Log("触摸时间大于等于 0.25 秒，Circle 已激活");
-                    }
-                    break;
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        int endX = startX + blockSize - 1;
+        int endY = startY + blockSize - 1;
 
-                case TouchPhase.Moved:
-                    if (isCircleActive && circle.activeSelf) // 如果 Circle 已激活
-                    {
-                        // 检测滑动方向
-                        DetectSwipe(touch.position);
-                    }
-                    else if (!GameOver && !isCircleActive) // 如果游戏未结束且Circle未激活，允许相机控制
-                    {
-                        cameraController.HandleTouchInput();
-                    }
-                    break;
+        // 计算本区块地雷数量（基于密度）
+        int blockMineCount = Mathf.RoundToInt(blockSize * blockSize * mineDensity);
+        blockMineCount = Mathf.Max(1, blockMineCount);
 
-                case TouchPhase.Ended:
-                    circle.SetActive(false);
-                    if (isTouching)
-                    {
-                        if (Time.time - touchTime < 0.25f) // 短按操作
-                        {
-                            Reveal(); // 点击操作
-                            Debug.Log("揭开操作");
-                        }
-                        else if (swipeDirection != SwipeDirection.None) // 滑动操作
-                        {
-                            // 根据滑动方向切换单元格状态
-                            HandleSwipeAction();
-                        }
-                    }
-                    isTouching = false; // 重置状态
-                    break;
+        // 生成候选位置（避开区块边缘1格）
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        for (int x = startX + 1; x <= endX - 1; x++)
+        {
+            for (int y = startY + 1; y <= endY - 1; y++)
+            {
+                Vector2Int pos = new Vector2Int(x, y);
+                if (!safeZone.Contains(pos))
+                {
+                    candidates.Add(pos);
+                }
+            }
+        }
 
-                case TouchPhase.Canceled:
-                    isTouching = false;
-                    circle.SetActive(false);
-                    Debug.Log("触摸取消");
-                    break;
+        // 随机布雷
+        System.Random rng = new System.Random();
+        HashSet<Vector2Int> minesInBlock = new HashSet<Vector2Int>();
+
+        for (int i = 0; i < Mathf.Min(blockMineCount, candidates.Count); i++)
+        {
+            int index = rng.Next(i, candidates.Count);
+            Vector2Int temp = candidates[i];
+            candidates[i] = candidates[index];
+            candidates[index] = temp;
+
+            Vector2Int minePos = candidates[i];
+            minesInBlock.Add(minePos);
+
+            // 初始化地雷单元格
+            Vector3Int position = new Vector3Int(minePos.x, minePos.y, 0);
+            state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
+        }
+
+        // 记录本区块地雷位置
+        blockMinePositions[blockCoord] = minesInBlock;
+        initializedBlocks[blockCoord] = true;
+
+        // 计算本区块数字
+        CalculateNumbersInBlock(blockCoord);
+
+        // 更新相邻区块边缘数字
+        UpdateAdjacentBlocksNumbers(blockCoord);
+    }
+
+    private bool IsForbiddenPosition(Vector2Int pos)
+    {
+        // 检查是否在任何区块的安全区域内
+        Vector2Int blockPos = new Vector2Int(
+            Mathf.FloorToInt(pos.x / (float)blockSize),
+            Mathf.FloorToInt(pos.y / (float)blockSize));
+
+        if (blockMinePositions.TryGetValue(blockPos, out HashSet<Vector2Int> forbiddenPositions))
+        {
+            return forbiddenPositions.Contains(pos);
+        }
+        return false;
+    }
+
+    private void CalculateNumbersInBlock(Vector2Int blockCoord)
+    {
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        int endX = startX + blockSize - 1;
+        int endY = startY + blockSize - 1;
+
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+
+                // 只处理非地雷单元格
+                if (!state.ContainsKey(position) || state[position].type != Cell.Type.Mine)
+                {
+                    int count = CountAdjacentMines(x, y);
+                    Cell cell = new Cell(position,
+                                       count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                                       count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                    cell.Number = count;
+                    state[position] = cell;
+                }
             }
         }
     }
-    private void SetCirclePosition(Vector2 screenPosition)
+
+    private int CountAdjacentMines(int x, int y)
     {
-        if (circle != null)
+        int count = 0;
+
+        for (int dx = -1; dx <= 1; dx++)
         {
-            // 将屏幕坐标转换为世界坐标
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                circle.GetComponent<RectTransform>().parent as RectTransform,
-                screenPosition,
-                null,
-                out Vector2 localPosition
-            );
-
-            // 设置 Circle 的位置
-            circle.GetComponent<RectTransform>().localPosition = localPosition;
-        }
-    }
-    private void DetectSwipe(Vector2 currentTouchPosition)
-    {
-        // 计算滑动距离
-        float swipeDistance = currentTouchPosition.y - initialTouchPosition.y;
-
-        // 滑动距离阈值（例如 50 像素）
-        float swipeThreshold = 50f;
-
-        if (Mathf.Abs(swipeDistance) > swipeThreshold)
-        {
-            if (swipeDistance > 0) // 向上滑动
+            for (int dy = -1; dy <= 1; dy++)
             {
-                swipeDirection = SwipeDirection.Up;
-                Debug.Log("向上滑动");
-            }
-            else // 向下滑动
-            {
-                swipeDirection = SwipeDirection.Down;
-                Debug.Log("向下滑动");
+                if (dx == 0 && dy == 0) continue;
+
+                int checkX = x + dx;
+                int checkY = y + dy;
+                Vector3Int pos = new Vector3Int(checkX, checkY, 0);
+
+                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
+                {
+                    count++;
+                }
             }
         }
+
+        return count;
     }
-    private void HandleSwipeAction()
+
+    private void UpdateAdjacentBlocksNumbers(Vector2Int blockCoord)
     {
-        if (swipeDirection == SwipeDirection.Up) // 上滑插旗
+        // 更新相邻区块边缘数字
+        for (int dx = -1; dx <= 1; dx++)
         {
-            Debug.Log("执行 Flags 方法");
-            Flags(initialCellPosition); // 作用于初始单元格
-        }
-        else if (swipeDirection == SwipeDirection.Down) // 下滑问号
-        {
-            Debug.Log("执行 Question 方法");
-            Question(initialCellPosition); // 作用于初始单元格
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
+                if (initializedBlocks.ContainsKey(adjacentBlock))
+                {
+                    CalculateNumbersInBlock(adjacentBlock);
+                }
+            }
         }
     }
-    private void Question(Vector3Int cellPosition)
+
+    private int CountMines(int cellX, int cellY)
     {
-        Debug.Log("进入 Question 方法");
-
-        // 获取初始单元格
-        Cell cell = GetCell(cellPosition.x, cellPosition.y);
-
-        // 如果单元格无效或已揭开，直接返回
-        if (cell.type == Cell.Type.Invalid || cell.revealed)
+        int count = 0;
+        for (int adjacentX = -1; adjacentX <= 1; adjacentX++)
         {
-            Debug.Log("单元格无效或已揭开，直接返回");
-            return;
-        }
+            for (int adjacentY = -1; adjacentY <= 1; adjacentY++)
+            {
+                if (adjacentX == 0 && adjacentY == 0) continue;
 
-        // 切换问号标记状态
-        cell.flagged = false;
-        cell.questioned = !cell.questioned;
-        state[cellPosition] = cell;
-        board.DrawCell(cellPosition, cell); // 局部更新这个单元格
+                int x = cellX + adjacentX;
+                int y = cellY + adjacentY;
+                if (!IsValid(x, y)) continue; // 动态区块检查
 
-        if (cell.questioned)
-        {
-            Debug.Log("设置单元格为问号 Tile");
-            cell.tile = board.tileQuestion; // 更新 tile 属性
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置 Tilemap 中的 Tile
+                Vector3Int position = new Vector3Int(x, y, 0);
+                if (state.TryGetValue(position, out Cell cell) && cell.type == Cell.Type.Mine)
+                {
+                    count++;
+                }
+            }
         }
-        else
-        {
-            Debug.Log("恢复单元格为未知 Tile");
-            cell.tile = board.tileUnknown; // 更新 tile 属性
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 设置 Tilemap 中的 Tile
-        }
-        state[cell.position] = cell;
-
-        // 更新单元格贴图
-        if (cell.questioned)
-        {
-            Debug.Log("设置单元格为问号贴图");
-            board.tilemap.SetTile(cellPosition, board.tileQuestion); // 设置为问号贴图
-        }
-        else
-        {
-            Debug.Log("恢复单元格为未知贴图");
-            board.tilemap.SetTile(cellPosition, board.tileUnknown); // 恢复为未知贴图
-        }
-
-        // 如果标记成功，触发震动
-        if (cell.questioned)
-        {
-            Handheld.Vibrate();
-        }
-
-        // 强制刷新 Tilemap
-        board.tilemap.RefreshAllTiles();
-
-        Debug.Log("Question 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
+        return count;
     }
+
     private void Reveal()
     {
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
@@ -647,6 +522,7 @@ public class Game : MonoBehaviour
                 break;
         }
     }
+
     private void CheckQuickReveal(int x, int y)
     {
         Cell centerCell = GetCell(x, y);
@@ -986,6 +862,17 @@ public class Game : MonoBehaviour
                 // 设置相机位置
                 mainCamera.transform.position = targetPosition;
             }
+        }
+    }
+
+    // Item按钮点击方法
+    public void ItemOpen()
+    {
+        if (menuManager != null)
+        {
+            menuManager.ShowMenu();
+            // Menu打开时禁用游戏操作
+            isTouching = false;
         }
     }
 }
