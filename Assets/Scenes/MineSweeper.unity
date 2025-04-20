@@ -295,7 +295,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 0.9411765, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -706,10 +706,10 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Restart
+  m_text: "\u91CD\u65B0\u5F00\u59CB"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b0829cfdcf8405b4d8cedbc45397753e, type: 2}
+  m_sharedMaterial: {fileID: -9121803527582388273, guid: b0829cfdcf8405b4d8cedbc45397753e, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1239,7 +1239,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278190080
-  m_fontColor: {r: 0, g: 0, b: 0, a: 1}
+  m_fontColor: {r: 0, g: 0.30771467, b: 0.5245282, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1426,7 +1426,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1382330495
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1837,7 +1837,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b33ac1c7fe6d3a44b2cad1836bcaaa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  circle: {fileID: 1382330494}
   cameraController: {fileID: 1439466343}
   Restart: {fileID: 1997780251}
   TouchPosition: {x: 0, y: 0}
@@ -1852,7 +1851,7 @@ MonoBehaviour:
   highScoreText: {fileID: 0}
   repositionButton: {fileID: 2111070112}
   itemButton: {fileID: 170189010}
-  menuPanel: {fileID: 527316275}
+  menuManager: {fileID: 2139885119}
 --- !u!1 &1914509751
 GameObject:
   m_ObjectHideFlags: 0
@@ -2235,7 +2234,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 0.9411765, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2388,7 +2387,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.78431374}
+  m_Color: {r: 0, g: 0.71509457, b: 1, a: 0.78431374}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2424,6 +2423,7 @@ GameObject:
   - component: {fileID: 2139885118}
   - component: {fileID: 2139885117}
   - component: {fileID: 2139885116}
+  - component: {fileID: 2139885119}
   m_Layer: 0
   m_Name: EventSystem
   m_TagString: Untagged
@@ -2491,6 +2491,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2139885119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2139885115}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b325708319d5d1f4cbed40453709976e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  continueButton: {fileID: 5297595}
+  mainMenuButton: {fileID: 1036187315}
+  menuPanel: {fileID: 527316275}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -140,9 +140,10 @@ public class Game : MonoBehaviour
                     break;
 
                 case TouchPhase.Stationary:
-                    if (isTouching && Time.time - touchTime >= 0.25f) // 触摸时间大于等于 0.25 秒
+                    if (isTouching && Time.time - touchTime >= 0.3f) // 触摸时间大于等于 0.3秒
                     {
                         // 执行插旗操作
+                        Handheld.Vibrate();
                         Flags(initialCellPosition);
                         isTouching = false; // 重置触摸状态
                     }
