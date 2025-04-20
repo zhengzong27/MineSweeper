@@ -4,6 +4,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine.Tilemaps;
+using UnityEngine.EventSystems;
 
 public class Game : MonoBehaviour
 {
@@ -47,15 +48,20 @@ public class Game : MonoBehaviour
     public TMP_Text scoreText; // 积分显示文本
     public TMP_Text highScoreText; // 最高分显示文本
     private int highScore = 0; // 最高分记录
+    public Image repositionButton; // 视角回调按钮
+    private Vector3 lastOperationPosition; // 记录最后一次操作位置
 
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
         Restart.onClick.AddListener(RestartGame);
+        repositionButton.GetComponent<Button>().onClick.AddListener(RepositionCamera);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
         // 加载最高分
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateScoreUI();
+        // 添加视角回调按钮的点击事件
+
     }
     private void Start()
     {
@@ -402,6 +408,12 @@ public class Game : MonoBehaviour
     {
         if (GameOver) return; // 游戏结束时直接返回，不处理任何触摸操作
 
+        // 检查是否点击了UI
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            return; // 如果点击了UI，直接返回，不处理游戏操作
+        }
+
         if (Input.touchCount > 0) // 检查是否有触摸点
         {
             Touch touch = Input.GetTouch(0); // 获取第一个触摸点
@@ -597,6 +609,9 @@ public class Game : MonoBehaviour
         Vector2 worldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
         Vector3Int cellPosition = board.tilemap.WorldToCell(worldPosition);
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
+
+        // 更新最后操作位置
+        lastOperationPosition = new Vector3(cellPosition.x, cellPosition.y, 0);
 
         if (!isInitialized)
         {
@@ -952,6 +967,20 @@ public class Game : MonoBehaviour
         if (highScoreText != null)
         {
             highScoreText.text = $"最高分: {highScore}";
+        }
+    }
+
+    // 视角回调方法
+    private void RepositionCamera()
+    {
+        if (!GameOver)
+        {
+            // 直接设置相机位置到最后的操作位置
+            Camera.main.transform.position = new Vector3(
+                lastOperationPosition.x,
+                lastOperationPosition.y,
+                Camera.main.transform.position.z
+            );
         }
     }
 }
