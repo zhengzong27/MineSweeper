@@ -61,7 +61,6 @@ public class Game : MonoBehaviour
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         UpdateScoreUI();
         // 添加视角回调按钮的点击事件
-
     }
     private void Start()
     {
@@ -81,10 +80,6 @@ public class Game : MonoBehaviour
         UpdateScoreUI();
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
-    }
-    private void GenerateCells()
-    {
-        state = new Dictionary<Vector3Int, Cell>();
     }
     private void InitializeWithFirstClick(Vector2Int firstClick)
     {
@@ -975,12 +970,22 @@ public class Game : MonoBehaviour
     {
         if (!GameOver)
         {
-            // 直接设置相机位置到最后的操作位置
-            Camera.main.transform.position = new Vector3(
-                lastOperationPosition.x,
-                lastOperationPosition.y,
-                Camera.main.transform.position.z
-            );
+            // 获取相机组件
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                // 计算相机应该移动到的位置
+                // 由于是正交相机，我们需要考虑orthographicSize
+                float cameraZ = mainCamera.transform.position.z;
+                Vector3 targetPosition = new Vector3(
+                    lastOperationPosition.x-4,
+                    lastOperationPosition.y-7,
+                    cameraZ
+                );
+
+                // 设置相机位置
+                mainCamera.transform.position = targetPosition;
+            }
         }
     }
 }
