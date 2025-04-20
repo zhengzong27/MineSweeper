@@ -72,6 +72,7 @@ public class Game : MonoBehaviour
         blockMinePositions.Clear();
         safeZone.Clear();
         score = 0; // 重置积分
+        UpdateScoreUI();
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
     }
