@@ -34,7 +34,7 @@ public class Game : MonoBehaviour
     [Header("Block Settings")]
     public int blockSize = 8; // 每个区块的大小（8x8格）
     public int blockBuffer = 2; // 视野外预加载的区块数量
-    public float mineDensity = 0.15f; // 每个区块的地雷密度
+    public float mineDensity = 0.2f; // 每个区块的地雷密度
     private Dictionary<Vector2Int, bool> initializedBlocks = new Dictionary<Vector2Int, bool>();
     private Dictionary<Vector2Int, HashSet<Vector2Int>> blockMinePositions = new Dictionary<Vector2Int, HashSet<Vector2Int>>();
     private HashSet<Vector2Int> safeZone = new HashSet<Vector2Int>(); // 首次点击的安全区域
@@ -48,6 +48,10 @@ public class Game : MonoBehaviour
     private Vector3 lastOperationPosition; // 记录最后一次操作位置
     [SerializeField] private Image itemButton; // Item按钮
     [SerializeField] private Menu menuManager; // Menu管理器
+
+    [Header("Audio")]
+    public AudioSource audioSource; // 音频源组件
+    public AudioClip getScoreSound; // GetScore音频文件
 
     private void Awake()
     {
@@ -502,12 +506,18 @@ public class Game : MonoBehaviour
                 Explode(cell);
                 break;
             case Cell.Type.Empty:
+                // 播放GetScore音频
+                    Debug.Log("播放音乐");
+                    audioSource.PlayOneShot(getScoreSound);
                 Flood(cell);
                 UpdateScore(); // 更新积分
                 ifWin();
                 break;
             case Cell.Type.Number: // 新增快速揭开逻辑
                 Debug.Log("按下数字单元格");
+                // 播放GetScore音频
+                    Debug.Log("播放音乐");
+                    audioSource.PlayOneShot(getScoreSound);
                 if (cell.revealed)
                 {
                     CheckQuickReveal(cellPosition.x, cellPosition.y);
@@ -522,6 +532,8 @@ public class Game : MonoBehaviour
                 }
                 break;
         }
+
+
     }
 
     private void CheckQuickReveal(int x, int y)
