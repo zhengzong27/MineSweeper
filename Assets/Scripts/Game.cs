@@ -53,6 +53,9 @@ public class Game : MonoBehaviour
     public AudioSource audioSource; // 音频源组件
     public AudioClip getScoreSound; // GetScore音频文件
 
+    [Header("Animation")]
+    public GameObject boomAnimation; // 爆炸动画对象
+
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
@@ -87,6 +90,12 @@ public class Game : MonoBehaviour
         UpdateScoreUI();
         Camera.main.transform.position = new Vector3(0, 0, -10f);
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
+        
+        // 禁用爆炸动画
+        if (boomAnimation != null)
+        {
+            boomAnimation.SetActive(false);
+        }
     }
 
     void Update()
@@ -670,6 +679,18 @@ public class Game : MonoBehaviour
         cell.exploded = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell); // 更新爆炸的地雷
+
+        // 启用并播放爆炸动画
+        if (boomAnimation != null)
+        {
+            boomAnimation.SetActive(true);
+            // 获取动画组件并播放
+            Animator animator = boomAnimation.GetComponent<Animator>();
+            if (animator != null)
+            {
+                animator.Play("BoomAnimation", 0, 0f); // 从开始播放动画
+            }
+        }
 
         // 遍历所有区块中的地雷（不再依赖width/height）
         foreach (var block in blockMinePositions.Values)
