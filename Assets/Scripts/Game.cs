@@ -160,9 +160,17 @@ public class Game : MonoBehaviour
                 case TouchPhase.Stationary:
                     if (isTouching && Time.time - touchTime >= 0.3f) // 触摸时间大于等于 0.3秒
                     {
-                        // 执行插旗操作
-                        Handheld.Vibrate();
-                        Flags(initialCellPosition);
+                        // 获取当前触摸位置对应的单元格
+                        Vector2 currentWorldPosition = Camera.main.ScreenToWorldPoint(TouchPosition);
+                        Vector3Int currentCellPosition = board.tilemap.WorldToCell(currentWorldPosition);
+                        Cell currentCell = GetCell(currentCellPosition.x, currentCellPosition.y);
+
+                        // 只在未揭开的单元格上执行插旗操作
+                        if (currentCell.type != Cell.Type.Invalid && !currentCell.revealed)
+                        {
+                            // 执行插旗操作
+                            Flags(currentCellPosition);
+                        }
                         isTouching = false; // 重置触摸状态
                     }
                     break;
@@ -423,6 +431,12 @@ public class Game : MonoBehaviour
                                        count > 0 ? board.tileNumbers[count] : board.tileEmpty);
                     cell.Number = count;
                     state[position] = cell;
+                    
+                    // 如果单元格已经揭开，立即更新显示
+                    if (cell.revealed)
+                    {
+                        board.DrawCell(position, cell);
+                    }
                 }
             }
         }
@@ -464,6 +478,7 @@ public class Game : MonoBehaviour
                 Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
                 if (initializedBlocks.ContainsKey(adjacentBlock))
                 {
+                    // 计算相邻区块的数字
                     CalculateNumbersInBlock(adjacentBlock);
                 }
             }
@@ -686,6 +701,11 @@ public class Game : MonoBehaviour
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
         GameOver = true;
+        // 禁用Item按钮
+        if (itemButton != null)
+        {
+            itemButton.GetComponent<Button>().interactable = false;
+        }
         cell.revealed = true;
         cell.exploded = true;
         state[cell.position] = cell;
@@ -778,17 +798,22 @@ public class Game : MonoBehaviour
         }
         cell.flagged = !cell.flagged;
         state[cellPosition] = cell;
-        state[cellPosition] = cell;
         board.DrawCell(cellPosition, cell); // 局部更新这个单元格
         // 如果标记成功，触发震动
         if (cell.flagged)
         {
-            Handheld.Vibrate();
+            if (ItemMenuController.Instance != null)
+            {
+                ItemMenuController.Instance.TriggerVibration();
+            }
+            if (audioSource != null && ItemMenuController.Instance != null && ItemMenuController.Instance.IsAudioEnabled)
+            {
+                audioSource.PlayOneShot(FlagSound);
+            }
         }
         board.tilemap.RefreshAllTiles();
         // 更新棋盘渲染
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
-        audioSource.PlayOneShot(FlagSound);
     }
     private Cell GetCell(int x,int y)
     {
@@ -840,6 +865,11 @@ public class Game : MonoBehaviour
         Debug.Log("你赢了！");
         Restart.gameObject.SetActive(true);
         GameOver = true;
+        // 禁用Item按钮
+        if (itemButton != null)
+        {
+            itemButton.GetComponent<Button>().interactable = false;
+        }
 
         // 标记所有地雷
         foreach (var block in blockMinePositions)
@@ -860,6 +890,11 @@ public class Game : MonoBehaviour
     {
         GameOver = false;
         Restart.gameObject.SetActive(false); // 隐藏按钮
+        // 重新启用Item按钮
+        if (itemButton != null)
+        {
+            itemButton.GetComponent<Button>().interactable = true;
+        }
 
         NewGame();
     }
@@ -932,7 +967,10 @@ public class Game : MonoBehaviour
     // Item按钮点击方法
     public void ItemOpen()
     {
-        audioSource.PlayOneShot(TouchUI);
+        if (audioSource != null && TouchUI != null)
+        {
+            audioSource.PlayOneShot(TouchUI);
+        }
         if (menuManager != null)
         {
             menuManager.ShowMenu();
