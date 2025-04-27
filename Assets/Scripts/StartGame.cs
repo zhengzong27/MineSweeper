@@ -1,9 +1,13 @@
 using UnityEngine;
-using UnityEngine.SceneManagement; // 引入场景管理命名空间
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class StartGame : MonoBehaviour
 {
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip Initgame; // 音频源组件
     public Button startButton; // 拖拽按钮到这里
 
     private void Start()
@@ -18,6 +22,13 @@ public class StartGame : MonoBehaviour
     private void OnStartButtonClicked()
     {
         // 切换到游戏场景
-        SceneManager.LoadScene(1); // "GameScene" 是目标场景的名称
+        audioSource.PlayOneShot(Initgame);
+        StartCoroutine(LoadMainMenuAfterSound()); // 通过协程处理延迟加载
+    }
+    IEnumerator LoadMainMenuAfterSound()
+    {
+        yield return new WaitWhile(() => audioSource.isPlaying);
+        // 加载主菜单场景
+        SceneManager.LoadScene(1);
     }
 }

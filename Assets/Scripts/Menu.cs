@@ -1,12 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System.Collections;
 
 public class Menu : MonoBehaviour
 {
     [SerializeField] private Button continueButton; // 继续游戏按钮
     [SerializeField] private Button mainMenuButton; // 返回主菜单按钮
     [SerializeField] private GameObject menuPanel; // 菜单面板
+    [Header("Audio")]
+    public AudioSource audioSource; // 音频源组件
+    public AudioClip TouchUI;
 
     private void Awake()
     {
@@ -24,7 +28,7 @@ public class Menu : MonoBehaviour
 
         if (mainMenuButton != null)
         {
-            mainMenuButton.onClick.AddListener(OnMainMenuClicked);
+            mainMenuButton.onClick.AddListener(OnMainMenuClicked); // 绑定到void方法
         }
     }
 
@@ -59,15 +63,22 @@ public class Menu : MonoBehaviour
     // 继续游戏按钮点击事件
     private void OnContinueClicked()
     {
+        audioSource.PlayOneShot(TouchUI);
         HideMenu();
     }
 
-    // 返回主菜单按钮点击事件
+    // 返回主菜单按钮点击事件（改为void方法）
     private void OnMainMenuClicked()
     {
-        // 恢复游戏时间
-        Time.timeScale = 1f;
+        audioSource.PlayOneShot(TouchUI);
+        StartCoroutine(LoadMainMenuAfterSound()); // 通过协程处理延迟加载
+    }
+
+    // 协程：等待音效播放完毕后加载主菜单
+    IEnumerator LoadMainMenuAfterSound()
+    {
+        yield return new WaitWhile(() => audioSource.isPlaying);
         // 加载主菜单场景
         SceneManager.LoadScene(0);
     }
-} 
+}

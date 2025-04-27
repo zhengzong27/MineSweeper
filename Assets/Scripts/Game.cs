@@ -52,6 +52,11 @@ public class Game : MonoBehaviour
     [Header("Audio")]
     public AudioSource audioSource; // 音频源组件
     public AudioClip getScoreSound; // GetScore音频文件
+    public AudioClip boomSound; // 爆炸音效
+    public AudioClip Unbelievable;//unbelievable音效
+    public AudioClip Floodsound; // 大量揭开音效
+    public AudioClip TouchUI; // 点击UI音效 
+    public AudioClip FlagSound; // 插旗音效 
 
     [Header("Animation")]
     public GameObject boomAnimation; // 爆炸动画对象
@@ -509,40 +514,46 @@ public class Game : MonoBehaviour
             return;
         }
 
+        // 如果单元格已经揭开，不播放音效
+        if (cell.revealed)
+        {
+            if (cell.type == Cell.Type.Number)
+            {
+                CheckQuickReveal(cellPosition.x, cellPosition.y);
+            }
+            return;
+        }
+
         switch (cell.type)
         {
             case Cell.Type.Mine:
                 Explode(cell);
                 break;
             case Cell.Type.Empty:
-                // 播放GetScore音频
-                    Debug.Log("播放音乐");
-                    audioSource.PlayOneShot(getScoreSound);
+                // 播放Flood音效
+                if (audioSource != null && Floodsound != null)
+                {
+                    audioSource.PlayOneShot(Floodsound);
+                    audioSource.PlayOneShot(Unbelievable);
+                }
                 Flood(cell);
                 UpdateScore(); // 更新积分
                 ifWin();
                 break;
             case Cell.Type.Number: // 新增快速揭开逻辑
                 Debug.Log("按下数字单元格");
-                // 播放GetScore音频
-                    Debug.Log("播放音乐");
+                // 播放GetScore音效
+                if (audioSource != null && getScoreSound != null)
+                {
                     audioSource.PlayOneShot(getScoreSound);
-                if (cell.revealed)
-                {
-                    CheckQuickReveal(cellPosition.x, cellPosition.y);
                 }
-                else
-                {
-                    cell.revealed = true;
-                    state[cell.position] = cell;
-                    board.DrawCell(cell.position, cell);
-                    UpdateScore(); // 更新积分
-                    ifWin();
-                }
+                cell.revealed = true;
+                state[cell.position] = cell;
+                board.DrawCell(cell.position, cell);
+                UpdateScore(); // 更新积分
+                ifWin();
                 break;
         }
-
-
     }
 
     private void CheckQuickReveal(int x, int y)
@@ -683,13 +694,30 @@ public class Game : MonoBehaviour
         // 启用并播放爆炸动画
         if (boomAnimation != null)
         {
+            // 计算摄像机上中位置
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                // z 取 boomAnimation 当前z与摄像机z的距离
+                float zOffset = Mathf.Abs(boomAnimation.transform.position.z - cam.transform.position.z);
+                Vector3 viewPos = new Vector3(0.5f, 0.65f, zOffset);
+                Vector3 worldPos = cam.ViewportToWorldPoint(viewPos);
+                worldPos.z = boomAnimation.transform.position.z; // 保持原z
+                boomAnimation.transform.position = worldPos;
+            }
+
             boomAnimation.SetActive(true);
-            // 获取动画组件并播放
             Animator animator = boomAnimation.GetComponent<Animator>();
             if (animator != null)
             {
-                animator.Play("BoomAnimation", 0, 0f); // 从开始播放动画
+                animator.Play("BoomAnimation", 0, 0f);
             }
+        }
+
+        // 播放爆炸音效
+        if (audioSource != null && boomSound != null)
+        {
+            audioSource.PlayOneShot(boomSound);
         }
 
         // 遍历所有区块中的地雷（不再依赖width/height）
@@ -760,6 +788,7 @@ public class Game : MonoBehaviour
         board.tilemap.RefreshAllTiles();
         // 更新棋盘渲染
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
+        audioSource.PlayOneShot(FlagSound);
     }
     private Cell GetCell(int x,int y)
     {
@@ -878,6 +907,7 @@ public class Game : MonoBehaviour
     // 视角回调方法
     private void RepositionCamera()
     {
+        audioSource.PlayOneShot(TouchUI);
         if (!GameOver)
         {
             // 获取相机组件
@@ -902,6 +932,7 @@ public class Game : MonoBehaviour
     // Item按钮点击方法
     public void ItemOpen()
     {
+        audioSource.PlayOneShot(TouchUI);
         if (menuManager != null)
         {
             menuManager.ShowMenu();

@@ -2057,6 +2057,11 @@ MonoBehaviour:
   menuManager: {fileID: 2139885119}
   audioSource: {fileID: 1439466344}
   getScoreSound: {fileID: 8300000, guid: b1cb68e448539d348a4ee919827eb7e1, type: 3}
+  boomSound: {fileID: 8300000, guid: 847ccdc086e728c49a41646f2d43a5fc, type: 3}
+  Unbelievable: {fileID: 8300000, guid: 4cfaa40b725a804499772c7b5e9af6b8, type: 3}
+  Floodsound: {fileID: 8300000, guid: f1e7ec458591c684aa8d99b388fe6628, type: 3}
+  TouchUI: {fileID: 8300000, guid: 81cb855537813654faf0a9e5a589943d, type: 3}
+  FlagSound: {fileID: 8300000, guid: 0a263f49c6ed9b54589b4f48af7efa44, type: 3}
   boomAnimation: {fileID: 1438438396}
 --- !u!1 &1914509751
 GameObject:
@@ -2681,6 +2686,8 @@ MonoBehaviour:
   continueButton: {fileID: 5297595}
   mainMenuButton: {fileID: 1036187315}
   menuPanel: {fileID: 527316275}
+  audioSource: {fileID: 1439466344}
+  TouchUI: {fileID: 8300000, guid: 81cb855537813654faf0a9e5a589943d, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
