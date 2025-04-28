@@ -15,6 +15,42 @@ public class Menu : MonoBehaviour
 
     private void Awake()
     {
+        // 添加场景加载完成的监听
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDestroy()
+    {
+        // 移除场景加载完成的监听
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // 重新获取所有UI组件的引用
+        if (menuPanel == null)
+        {
+            menuPanel = GameObject.Find("MenuPanel");
+        }
+        if (continueButton == null)
+        {
+            continueButton = GameObject.Find("ContinueButton")?.GetComponent<Button>();
+        }
+        if (mainMenuButton == null)
+        {
+            mainMenuButton = GameObject.Find("MainMenuButton")?.GetComponent<Button>();
+        }
+        if (itemButton == null)
+        {
+            itemButton = GameObject.Find("ItemButton")?.GetComponent<Button>();
+        }
+
+        // 重新初始化UI
+        InitializeUI();
+    }
+
+    private void InitializeUI()
+    {
         // 确保菜单面板初始状态为关闭
         if (menuPanel != null)
         {
@@ -76,8 +112,26 @@ public class Menu : MonoBehaviour
     // 返回主菜单按钮点击事件
     private void OnMainMenuClicked()
     {
-        audioSource.PlayOneShot(TouchUI);
-        StartCoroutine(LoadMainMenuAfterSound());
+        // 播放音效并等待完成
+        if (audioSource != null && TouchUI != null)
+        {
+            audioSource.PlayOneShot(TouchUI);
+            // 等待音效播放完成后再加载场景
+            StartCoroutine(LoadMainMenuAfterSound());
+        }
+        else
+        {
+            // 如果没有音效，直接加载场景
+            SceneManager.LoadScene("BeginScene");
+        }
+    }
+
+    private IEnumerator LoadMainMenuAfterSound()
+    {
+        // 等待音效播放完成
+        yield return new WaitForSeconds(TouchUI.length);
+        // 加载场景
+        SceneManager.LoadScene("BeginScene");
     }
 
     // Item按钮点击事件
@@ -89,11 +143,5 @@ public class Menu : MonoBehaviour
             ItemMenuController.Instance.ShowItemMenu();
             HideMenu(); // 隐藏主菜单
         }
-    }
-
-    private IEnumerator LoadMainMenuAfterSound()
-    {
-        yield return new WaitForSeconds(TouchUI.length);
-        SceneManager.LoadScene("MainMenu");
     }
 }

@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine.UI;
 using UnityEngine.Tilemaps;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 public class Game : MonoBehaviour
 {
@@ -79,7 +80,34 @@ public class Game : MonoBehaviour
 
     private void Start()
     {
+        // 重新获取Menu组件引用
+        if (menuManager == null)
+        {
+            menuManager = FindObjectOfType<Menu>();
+        }
         NewGame();
+    }
+
+    private void OnEnable()
+    {
+        // 添加场景加载完成的监听
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        // 移除场景加载完成的监听
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // 场景加载完成后重新获取Menu组件引用
+        if (menuManager == null)
+        {
+            menuManager = FindObjectOfType<Menu>();
+            Debug.Log("重新获取Menu组件引用: " + (menuManager != null ? "成功" : "失败"));
+        }
     }
 
     private void NewGame()
@@ -547,7 +575,7 @@ public class Game : MonoBehaviour
             case Cell.Type.Empty:
                 // 播放Flood音效
                 if (audioSource != null && Floodsound != null)
-                {
+                {   Handheld.Vibrate();
                     audioSource.PlayOneShot(Floodsound);
                     audioSource.PlayOneShot(Unbelievable);
                 }
@@ -698,6 +726,7 @@ public class Game : MonoBehaviour
     }*/
     private void Explode(Cell cell)
     {
+        Handheld.Vibrate();
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
         GameOver = true;
@@ -802,14 +831,7 @@ public class Game : MonoBehaviour
         // 如果标记成功，触发震动
         if (cell.flagged)
         {
-            if (ItemMenuController.Instance != null)
-            {
-                ItemMenuController.Instance.TriggerVibration();
-            }
-            if (audioSource != null && ItemMenuController.Instance != null && ItemMenuController.Instance.IsAudioEnabled)
-            {
                 audioSource.PlayOneShot(FlagSound);
-            }
         }
         board.tilemap.RefreshAllTiles();
         // 更新棋盘渲染
@@ -971,8 +993,10 @@ public class Game : MonoBehaviour
         {
             audioSource.PlayOneShot(TouchUI);
         }
+        Debug.Log("点击成功");
         if (menuManager != null)
         {
+            Debug.Log("显示成功1");
             menuManager.ShowMenu();
             // Menu打开时禁用游戏操作
             isTouching = false;

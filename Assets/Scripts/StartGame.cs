@@ -7,12 +7,12 @@ public class StartGame : MonoBehaviour
 {
     [Header("Audio")]
     public AudioSource audioSource;
-    public AudioClip Initgame; // ÒôÆµÔ´×é¼þ
-    public Button startButton; // ÍÏ×§°´Å¥µ½ÕâÀï
+    public AudioClip Initgame; // ï¿½ï¿½ÆµÔ´ï¿½ï¿½ï¿½
+    public Button startButton; // ï¿½ï¿½×§ï¿½ï¿½Å¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     private void Start()
     {
-        // °ó¶¨°´Å¥µã»÷ÊÂ¼þ
+        // ï¿½ó¶¨°ï¿½Å¥ï¿½ï¿½ï¿½ï¿½Â¼ï¿½
         if (startButton != null)
         {
             startButton.onClick.AddListener(OnStartButtonClicked);
@@ -21,14 +21,14 @@ public class StartGame : MonoBehaviour
 
     private void OnStartButtonClicked()
     {
-        // ÇÐ»»µ½ÓÎÏ·³¡¾°
+        // ï¿½Ð»ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½ï¿½ï¿½ï¿½
         audioSource.PlayOneShot(Initgame);
-        StartCoroutine(LoadMainMenuAfterSound()); // Í¨¹ýÐ­³Ì´¦ÀíÑÓ³Ù¼ÓÔØ
+        StartCoroutine(LoadMainMenuAfterSound()); // Í¨ï¿½ï¿½Ð­ï¿½Ì´ï¿½ï¿½ï¿½ï¿½Ó³Ù¼ï¿½ï¿½ï¿½
     }
     IEnumerator LoadMainMenuAfterSound()
     {
         yield return new WaitWhile(() => audioSource.isPlaying);
-        // ¼ÓÔØÖ÷²Ëµ¥³¡¾°
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ëµï¿½ï¿½ï¿½ï¿½ï¿½
         SceneManager.LoadScene(1);
     }
 }

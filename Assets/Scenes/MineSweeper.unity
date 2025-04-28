@@ -136,7 +136,7 @@ GameObject:
   - component: {fileID: 5297593}
   - component: {fileID: 5297595}
   m_Layer: 5
-  m_Name: Continue
+  m_Name: ContinueButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -586,7 +586,7 @@ GameObject:
   - component: {fileID: 276744023}
   - component: {fileID: 276744022}
   m_Layer: 5
-  m_Name: Back
+  m_Name: BackButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -895,7 +895,7 @@ GameObject:
   - component: {fileID: 426719307}
   - component: {fileID: 426719306}
   m_Layer: 5
-  m_Name: Item
+  m_Name: ItemButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1149,7 +1149,7 @@ GameObject:
   - component: {fileID: 527316278}
   - component: {fileID: 527316277}
   m_Layer: 5
-  m_Name: Menu
+  m_Name: MenuPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1224,7 +1224,7 @@ GameObject:
   - component: {fileID: 579971072}
   - component: {fileID: 579971073}
   m_Layer: 5
-  m_Name: Toggle
+  m_Name: VibrationToggle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1640,7 +1640,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &695164139
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1915,6 +1915,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 809983705}
   m_CullTransparentMesh: 1
+--- !u!1 &884528270
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 884528272}
+  - component: {fileID: 884528271}
+  m_Layer: 0
+  m_Name: Menumanager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &884528271
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 884528270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b325708319d5d1f4cbed40453709976e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  continueButton: {fileID: 5297595}
+  mainMenuButton: {fileID: 1036187315}
+  itemButton: {fileID: 426719306}
+  menuPanel: {fileID: 527316275}
+  audioSource: {fileID: 1439466344}
+  TouchUI: {fileID: 8300000, guid: 81cb855537813654faf0a9e5a589943d, type: 3}
+--- !u!4 &884528272
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 884528270}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 914.44446, y: 1564.1792, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1036187311
 GameObject:
   m_ObjectHideFlags: 0
@@ -1928,7 +1978,7 @@ GameObject:
   - component: {fileID: 1036187313}
   - component: {fileID: 1036187315}
   m_Layer: 5
-  m_Name: MainMenu
+  m_Name: MainMenuButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3301,7 +3351,7 @@ GameObject:
   - component: {fileID: 1628159706}
   - component: {fileID: 1628159707}
   m_Layer: 5
-  m_Name: Toggle
+  m_Name: AudioToggle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3461,7 +3511,7 @@ MonoBehaviour:
   highScoreText: {fileID: 0}
   repositionButton: {fileID: 2111070112}
   itemButton: {fileID: 170189010}
-  menuManager: {fileID: 2139885119}
+  menuManager: {fileID: 0}
   audioSource: {fileID: 1439466344}
   getScoreSound: {fileID: 8300000, guid: b1cb68e448539d348a4ee919827eb7e1, type: 3}
   boomSound: {fileID: 8300000, guid: 847ccdc086e728c49a41646f2d43a5fc, type: 3}
@@ -4412,7 +4462,6 @@ GameObject:
   - component: {fileID: 2139885118}
   - component: {fileID: 2139885117}
   - component: {fileID: 2139885116}
-  - component: {fileID: 2139885119}
   - component: {fileID: 2139885120}
   m_Layer: 0
   m_Name: EventSystem
@@ -4481,24 +4530,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2139885119
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2139885115}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b325708319d5d1f4cbed40453709976e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  continueButton: {fileID: 5297595}
-  mainMenuButton: {fileID: 1036187315}
-  itemButton: {fileID: 426719306}
-  menuPanel: {fileID: 527316275}
-  audioSource: {fileID: 1439466344}
-  TouchUI: {fileID: 8300000, guid: 81cb855537813654faf0a9e5a589943d, type: 3}
 --- !u!114 &2139885120
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4528,3 +4559,4 @@ SceneRoots:
   - {fileID: 1678017744}
   - {fileID: 1438438399}
   - {fileID: 2139885118}
+  - {fileID: 884528272}
