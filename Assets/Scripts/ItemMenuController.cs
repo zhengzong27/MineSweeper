@@ -64,6 +64,9 @@ public class ItemMenuController : MonoBehaviour
                 backButtonPath = GetGameObjectPath(backButton.gameObject);
                 DontDestroyOnLoad(backButton.gameObject);
             }
+
+            // 加载保存的设置
+            LoadSettings();
         }
         else
         {
@@ -257,6 +260,7 @@ public class ItemMenuController : MonoBehaviour
     {
         IsAudioEnabled = isOn;
         UpdateAudioState();
+        // 保存设置
         SaveSettings();
     }
 
@@ -264,6 +268,7 @@ public class ItemMenuController : MonoBehaviour
     private void OnVibrationToggleChanged(bool isOn)
     {
         IsVibrationEnabled = isOn;
+        // 保存设置
         SaveSettings();
     }
 
@@ -299,13 +304,13 @@ public class ItemMenuController : MonoBehaviour
     {
         PlayerPrefs.SetInt("AudioEnabled", IsAudioEnabled ? 1 : 0);
         PlayerPrefs.SetInt("VibrationEnabled", IsVibrationEnabled ? 1 : 0);
-        PlayerPrefs.Save();
+        PlayerPrefs.Save(); // 确保立即保存到磁盘
     }
 
     // 加载设置
     private void LoadSettings()
     {
-        // 默认值为true
+        // 从PlayerPrefs加载设置，如果不存在则默认为true
         IsAudioEnabled = PlayerPrefs.GetInt("AudioEnabled", 1) == 1;
         IsVibrationEnabled = PlayerPrefs.GetInt("VibrationEnabled", 1) == 1;
 

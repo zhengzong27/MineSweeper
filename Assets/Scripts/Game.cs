@@ -75,6 +75,10 @@ public class Game : MonoBehaviour
         }
 
         lastCameraCellPosition = new Vector2Int(int.MinValue, int.MinValue);
+        
+        // 加载保存的最高分
+        highScore = PlayerPrefs.GetInt("HighScore", 0);
+        
         UpdateScoreUI();
     }
 
@@ -293,45 +297,60 @@ public class Game : MonoBehaviour
         // 绘制当前活跃单元格
         foreach (Vector3Int position in currentActiveCells)
         {
+            // 检查该位置所在的区块是否已初始化
+            Vector2Int blockCoord = new Vector2Int(
+                Mathf.FloorToInt(position.x / (float)blockSize),
+                Mathf.FloorToInt(position.y / (float)blockSize)
+            );
+            
+            // 如果区块未初始化，跳过该单元格的处理
+            if (!initializedBlocks.ContainsKey(blockCoord))
+            {
+                continue;
+            }
+
             if (!state.TryGetValue(position, out Cell cell))
             {
-                // 如果单元格不存在，创建默认空单元格
-                cell = new Cell(position, Cell.Type.Empty, null);
+                // 计算周围地雷数量
+                int count = CountAdjacentMines(position.x, position.y);
+                cell = new Cell(position,
+                               count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                               count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                cell.Number = count;
                 state[position] = cell;
             }
-            else { 
-                // 根据单元格状态设置贴图
-                if (cell.revealed)
+            
+            // 根据单元格状态设置贴图
+            if (cell.revealed)
+            {
+                // 已揭开的单元格
+                if (cell.type == Cell.Type.Mine)
                 {
-                    // 已揭开的单元格
-                    if (cell.type == Cell.Type.Mine)
-                    {
-                        board.tilemap.SetTile(position, board.tileMine);
-                    }
-                    else if (cell.type == Cell.Type.Number)
-                    {
-                        board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
-                    }
-                    else
-                    {
-                        board.tilemap.SetTile(position, board.tileEmpty);
-                    }
+                    board.tilemap.SetTile(position, board.tileMine);
+                }
+                else if (cell.type == Cell.Type.Number)
+                {
+                    board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
                 }
                 else
                 {
-                    // 未揭开的单元格
-                    if (cell.flagged)
-                    {
-                        board.tilemap.SetTile(position, board.tileFlag);
-                    }
-                    else if (cell.questioned)
-                    {
-                        board.tilemap.SetTile(position, board.tileQuestion);
-                    }
-                    else
-                    {
-                        board.tilemap.SetTile(position, board.tileUnknown);
-                    }
+                    board.tilemap.SetTile(position, board.tileEmpty);
+                }
+            }
+            else
+            {
+                // 未揭开的单元格
+                if (cell.flagged)
+                {
+                    board.tilemap.SetTile(position, board.tileFlag);
+                }
+                else if (cell.questioned)
+                {
+                    board.tilemap.SetTile(position, board.tileQuestion);
+                }
+                else
+                {
+                    board.tilemap.SetTile(position, board.tileUnknown);
                 }
             }
         }
@@ -340,33 +359,67 @@ public class Game : MonoBehaviour
 
     private void InitializeWithFirstClick(Vector2Int firstClick)
     {
-        // 设置安全区域（3x3）
-        safeZone.Clear();
+        // 记录首次点击的位置
+        Vector3Int firstClickPos = new Vector3Int(firstClick.x, firstClick.y, 0);
+        
+        // 将首次点击的单元格设置为空白
+        state[firstClickPos] = new Cell(firstClickPos, Cell.Type.Empty, board.tileEmpty);
+        
+        // 获取首次点击所在的区块坐标
+        Vector2Int blockCoord = new Vector2Int(
+            Mathf.FloorToInt(firstClick.x / (float)blockSize),
+            Mathf.FloorToInt(firstClick.y / (float)blockSize)
+        );
+
+        // 初始化点击区块及相邻区块
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
             {
-                safeZone.Add(new Vector2Int(firstClick.x + dx, firstClick.y + dy));
+                Vector2Int currentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
+                InitializeBlockWithFirstClick(currentBlock, firstClick);
             }
         }
 
-        // 初始化点击区块及相邻区块
-        Vector2Int blockCoord = new Vector2Int(
-            Mathf.FloorToInt(firstClick.x / (float)blockSize),
-            Mathf.FloorToInt(firstClick.y / (float)blockSize));
-
+        // 确保首次点击及其周围8格都不是地雷
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
             {
-                InitializeBlock(new Vector2Int(blockCoord.x + dx, blockCoord.y + dy));
+                int x = firstClick.x + dx;
+                int y = firstClick.y + dy;
+                Vector3Int pos = new Vector3Int(x, y, 0);
+
+                // 如果这个位置有地雷，移除它
+                if (state.ContainsKey(pos) && state[pos].type == Cell.Type.Mine)
+                {
+                    // 找到这个地雷所在的区块
+                    Vector2Int mineBlock = new Vector2Int(
+                        Mathf.FloorToInt(x / (float)blockSize),
+                        Mathf.FloorToInt(y / (float)blockSize)
+                    );
+                    
+                    // 从区块的地雷集合中移除
+                    if (blockMinePositions.ContainsKey(mineBlock))
+                    {
+                        blockMinePositions[mineBlock].Remove(new Vector2Int(x, y));
+                    }
+                    
+                    // 重新计算这个位置为空白或数字
+                    int count = CountAdjacentMines(x, y);
+                    Cell cell = new Cell(pos,
+                        count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                        count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                    cell.Number = count;
+                    state[pos] = cell;
+                }
             }
         }
 
         isInitialized = true;
     }
 
-    private void InitializeBlock(Vector2Int blockCoord)
+    private void InitializeBlockWithFirstClick(Vector2Int blockCoord, Vector2Int firstClick)
     {
         if (initializedBlocks.ContainsKey(blockCoord)) return;
 
@@ -379,14 +432,15 @@ public class Game : MonoBehaviour
         int blockMineCount = Mathf.RoundToInt(blockSize * blockSize * mineDensity);
         blockMineCount = Mathf.Max(1, blockMineCount);
 
-        // 生成候选位置（避开区块边缘1格）
+        // 生成候选位置（排除首次点击及其相邻格子）
         List<Vector2Int> candidates = new List<Vector2Int>();
-        for (int x = startX + 1; x <= endX - 1; x++)
+        for (int x = startX; x <= endX; x++)
         {
-            for (int y = startY + 1; y <= endY - 1; y++)
+            for (int y = startY; y <= endY; y++)
             {
                 Vector2Int pos = new Vector2Int(x, y);
-                if (!safeZone.Contains(pos))
+                // 检查是否在首次点击的相邻范围内
+                if (Mathf.Abs(pos.x - firstClick.x) > 1 || Mathf.Abs(pos.y - firstClick.y) > 1)
                 {
                     candidates.Add(pos);
                 }
@@ -420,7 +474,67 @@ public class Game : MonoBehaviour
         CalculateNumbersInBlock(blockCoord);
 
         // 更新相邻区块边缘数字
-        UpdateAdjacentBlocksNumbers(blockCoord);
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
+                if (initializedBlocks.ContainsKey(adjacentBlock))
+                {
+                    // 只重新计算相邻区块边缘的数字
+                    CalculateNumbersForBlockBorder(adjacentBlock, blockCoord);
+                }
+            }
+        }
+    }
+
+    // 新增方法：只计算区块边缘的数字
+    private void CalculateNumbersForBlockBorder(Vector2Int blockCoord, Vector2Int sourceBlock)
+    {
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        int endX = startX + blockSize - 1;
+        int endY = startY + blockSize - 1;
+
+        // 确定需要重新计算的边界范围
+        bool isLeftBorder = sourceBlock.x < blockCoord.x;
+        bool isRightBorder = sourceBlock.x > blockCoord.x;
+        bool isTopBorder = sourceBlock.y > blockCoord.y;
+        bool isBottomBorder = sourceBlock.y < blockCoord.y;
+
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                // 只处理边界单元格
+                if ((isLeftBorder && x == startX) ||
+                    (isRightBorder && x == endX) ||
+                    (isTopBorder && y == endY) ||
+                    (isBottomBorder && y == startY))
+                {
+                    Vector3Int position = new Vector3Int(x, y, 0);
+                    
+                    // 只处理非地雷单元格
+                    if (!state.ContainsKey(position) || state[position].type != Cell.Type.Mine)
+                    {
+                        int count = CountAdjacentMines(x, y);
+                        Cell cell = new Cell(position,
+                                           count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                                           count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                        cell.Number = count;
+                        state[position] = cell;
+                        
+                        // 如果单元格已经揭开，立即更新显示
+                        if (cell.revealed)
+                        {
+                            board.DrawCell(position, cell);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private bool IsForbiddenPosition(Vector2Int pos)
@@ -494,25 +608,6 @@ public class Game : MonoBehaviour
         return count;
     }
 
-    private void UpdateAdjacentBlocksNumbers(Vector2Int blockCoord)
-    {
-        // 更新相邻区块边缘数字
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
-                if (initializedBlocks.ContainsKey(adjacentBlock))
-                {
-                    // 计算相邻区块的数字
-                    CalculateNumbersInBlock(adjacentBlock);
-                }
-            }
-        }
-    }
-
     private int CountMines(int cellX, int cellY)
     {
         int count = 0;
@@ -550,6 +645,32 @@ public class Game : MonoBehaviour
             // 首次点击时初始化地图
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
             isInitialized = true;
+            
+            // 强制将首次点击的单元格设置为空白
+            cell = new Cell(cellPosition, Cell.Type.Empty, board.tileEmpty);
+            state[cellPosition] = cell;
+            
+            // 强制刷新首次点击单元格及其周围8格
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    int x = cellPosition.x + dx;
+                    int y = cellPosition.y + dy;
+                    Vector3Int pos = new Vector3Int(x, y, 0);
+
+                    // 确保这些格子不是地雷
+                    if (!state.ContainsKey(pos) || state[pos].type != Cell.Type.Mine)
+                    {
+                        int count = CountAdjacentMines(x, y);
+                        Cell neighborCell = new Cell(pos,
+                            count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                            count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                        neighborCell.Number = count;
+                        state[pos] = neighborCell;
+                    }
+                }
+            }
         }
 
         if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
@@ -575,7 +696,8 @@ public class Game : MonoBehaviour
             case Cell.Type.Empty:
                 // 播放Flood音效
                 if (audioSource != null && Floodsound != null)
-                {   Handheld.Vibrate();
+                {   
+                    Handheld.Vibrate();
                     audioSource.PlayOneShot(Floodsound);
                     audioSource.PlayOneShot(Unbelievable);
                 }
@@ -1000,6 +1122,73 @@ public class Game : MonoBehaviour
             menuManager.ShowMenu();
             // Menu打开时禁用游戏操作
             isTouching = false;
+        }
+    }
+
+    private void InitializeBlock(Vector2Int blockCoord)
+    {
+        if (initializedBlocks.ContainsKey(blockCoord)) return;
+
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        int endX = startX + blockSize - 1;
+        int endY = startY + blockSize - 1;
+
+        // 计算本区块地雷数量（基于密度）
+        int blockMineCount = Mathf.RoundToInt(blockSize * blockSize * mineDensity);
+        blockMineCount = Mathf.Max(1, blockMineCount);
+
+        // 生成候选位置
+        List<Vector2Int> candidates = new List<Vector2Int>();
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                Vector2Int pos = new Vector2Int(x, y);
+                candidates.Add(pos);
+            }
+        }
+
+        // 随机布雷
+        System.Random rng = new System.Random();
+        HashSet<Vector2Int> minesInBlock = new HashSet<Vector2Int>();
+
+        for (int i = 0; i < Mathf.Min(blockMineCount, candidates.Count); i++)
+        {
+            int index = rng.Next(i, candidates.Count);
+            Vector2Int temp = candidates[i];
+            candidates[i] = candidates[index];
+            candidates[index] = temp;
+
+            Vector2Int minePos = candidates[i];
+            minesInBlock.Add(minePos);
+
+            // 初始化地雷单元格
+            Vector3Int position = new Vector3Int(minePos.x, minePos.y, 0);
+            state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
+        }
+
+        // 记录本区块地雷位置
+        blockMinePositions[blockCoord] = minesInBlock;
+        initializedBlocks[blockCoord] = true;
+
+        // 计算本区块数字
+        CalculateNumbersInBlock(blockCoord);
+
+        // 更新相邻区块边缘数字
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0) continue;
+
+                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
+                if (initializedBlocks.ContainsKey(adjacentBlock))
+                {
+                    // 只重新计算相邻区块边缘的数字
+                    CalculateNumbersForBlockBorder(adjacentBlock, blockCoord);
+                }
+            }
         }
     }
 }
