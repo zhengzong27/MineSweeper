@@ -61,6 +61,12 @@ public class Game : MonoBehaviour
 
     [Header("Animation")]
     public GameObject boomAnimation; // 爆炸动画对象
+    [SerializeField] private TileBase tileRed; // 红色闪烁贴图
+    [SerializeField] private float blinkDuration = 0.1f; // 闪烁持续时间
+    [SerializeField] private int blinkCount = 1; // 闪烁次数
+
+    private Dictionary<Vector3Int, TileBase> originalTiles = new Dictionary<Vector3Int, TileBase>(); // 存储原始贴图
+    private Coroutine currentBlinkCoroutine; // 当前闪烁协程
 
     private void Awake()
     {
@@ -320,37 +326,37 @@ public class Game : MonoBehaviour
                 state[position] = cell;
             }
             
-            // 根据单元格状态设置贴图
-            if (cell.revealed)
-            {
-                // 已揭开的单元格
-                if (cell.type == Cell.Type.Mine)
+                // 根据单元格状态设置贴图
+                if (cell.revealed)
                 {
-                    board.tilemap.SetTile(position, board.tileMine);
-                }
-                else if (cell.type == Cell.Type.Number)
-                {
-                    board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
-                }
-                else
-                {
-                    board.tilemap.SetTile(position, board.tileEmpty);
-                }
-            }
-            else
-            {
-                // 未揭开的单元格
-                if (cell.flagged)
-                {
-                    board.tilemap.SetTile(position, board.tileFlag);
-                }
-                else if (cell.questioned)
-                {
-                    board.tilemap.SetTile(position, board.tileQuestion);
+                    // 已揭开的单元格
+                    if (cell.type == Cell.Type.Mine)
+                    {
+                        board.tilemap.SetTile(position, board.tileMine);
+                    }
+                    else if (cell.type == Cell.Type.Number)
+                    {
+                        board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(position, board.tileEmpty);
+                    }
                 }
                 else
                 {
-                    board.tilemap.SetTile(position, board.tileUnknown);
+                    // 未揭开的单元格
+                    if (cell.flagged)
+                    {
+                        board.tilemap.SetTile(position, board.tileFlag);
+                    }
+                    else if (cell.questioned)
+                    {
+                        board.tilemap.SetTile(position, board.tileQuestion);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(position, board.tileUnknown);
                 }
             }
         }
@@ -599,9 +605,9 @@ public class Game : MonoBehaviour
                 // 只计算已初始化区块内的地雷
                 if (initializedBlocks.ContainsKey(checkBlock))
                 {
-                    if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
-                    {
-                        count++;
+                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
+                {
+                    count++;
                     }
                 }
             }
@@ -725,7 +731,10 @@ public class Game : MonoBehaviour
 
     private void CheckQuickReveal(int x, int y)
     {
+        // 获取中心单元格
         Cell centerCell = GetCell(x, y);
+        
+        // 检查中心单元格是否已揭开且为数字类型
         if (!centerCell.revealed || centerCell.type != Cell.Type.Number)
             return;
 
@@ -733,7 +742,7 @@ public class Game : MonoBehaviour
         List<Vector2Int> cellsToReveal = new List<Vector2Int>();
         List<Vector2Int> cellsToBlink = new List<Vector2Int>();
 
-        // 统计周围标记的地雷数量和需要揭示的单元格
+        // 统计周围插旗数量和需要揭开的单元格
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -742,6 +751,7 @@ public class Game : MonoBehaviour
 
                 int checkX = x + dx;
                 int checkY = y + dy;
+                
                 if (IsValid(checkX, checkY))
                 {
                     Cell neighbor = GetCell(checkX, checkY);
@@ -752,102 +762,60 @@ public class Game : MonoBehaviour
                     else if (!neighbor.revealed && !neighbor.flagged)
                     {
                         cellsToReveal.Add(new Vector2Int(checkX, checkY));
-                        cellsToBlink.Add(new Vector2Int(checkX, checkY)); // 添加到闪烁列表
+                        cellsToBlink.Add(new Vector2Int(checkX, checkY));
                     }
                 }
             }
         }
 
-        // 快速揭示条件判断
-        if (flagCount >= centerCell.Number)
+        // 如果插旗数量等于中心单元格的数字，则揭开所有未揭开的相邻单元格
+        if (flagCount == centerCell.Number)
         {
             foreach (Vector2Int pos in cellsToReveal)
             {
                 if (!IsValid(pos.x, pos.y)) continue;
 
                 Cell cell = GetCell(pos.x, pos.y);
+                
+                // 如果遇到地雷，游戏结束
                 if (cell.type == Cell.Type.Mine)
                 {
                     Explode(cell);
                     return;
                 }
 
+                // 揭开单元格
                 if (!cell.revealed && !cell.flagged)
                 {
                     if (cell.type == Cell.Type.Empty)
                     {
+                        // 如果是空白单元格，触发Flood操作
                         Flood(cell);
                     }
                     else
                     {
-                        Cell c = GetCell(pos.x, pos.y);
-                        c.revealed = true;
-                        state[c.position] = c;
+                        // 如果是数字单元格，直接揭开
+                        cell.revealed = true;
+                        state[cell.position] = cell;
+                        board.DrawCell(cell.position, cell);
                     }
                 }
             }
+            
+            // 更新积分并检查是否胜利
+            UpdateScore();
             ifWin();
         }
         else
         {
-            // 快速揭示条件不满足，触发闪烁
-            Debug.Log("快速揭示条件不满足，触发闪烁");
-            //StartCoroutine(BlinkCells(cellsToBlink));
+            // 如果插旗数量不等于中心单元格的数字，触发闪烁效果
+            if (cellsToBlink.Count > 0)
+            {
+                currentBlinkCoroutine = StartCoroutine(BlinkCells(cellsToBlink));
+            }
         }
     }
 
-   /* private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
-    {
-        Debug.Log("开始闪烁");
-        int blinkCount = 2;
-        float blinkDuration = 0.05f;
-
-        // 保存闪烁前的 Tile
-    Dictionary<Vector2Int, Tile> previousTiles = new Dictionary<Vector2Int, Tile>();
-        foreach (var pos in cellsToBlink)
-        {
-            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
-            if (!state.TryGetValue(cellPos, out Cell cell) || cell.tile == null)
-            {
-                Debug.LogError($"Tile at position ({pos.x}, {pos.y}) is null or cell not found!");
-                continue;
-            }
-
-            previousTiles[pos] = cell.tile; // 保存原始 Tile
-            Debug.Log("闪烁前的 Tile: " + previousTiles[pos]);
-        }
-
-        // 闪烁逻辑
-        for (int i = 0; i < blinkCount; i++)
-        {
-            Debug.Log("设置为红色 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                Debug.Log("变成红色！！！");
-                board.tilemap.SetTile(new Vector3Int(pos.x, pos.y, 0), board.tileRed); // 替换为红色 Tile
-            }
-            board.tilemap.RefreshAllTiles(); // 强制刷新 Tilemap
-            yield return new WaitForSeconds(blinkDuration);
-            Debug.Log("恢复成闪烁前的 Tile");
-            foreach (var pos in cellsToBlink)
-            {
-                if (!previousTiles.TryGetValue(pos, out Tile originalTile))
-                    continue;
-
-                Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
-                if (state.TryGetValue(cellPos, out Cell cell))
-                {
-                    cell.tile = originalTile;
-                    state[cellPos] = cell;
-                    board.tilemap.SetTile(cellPos, originalTile);
-                    board.tilemap.RefreshTile(cellPos);
-                }
-            }
-            board.Draw(state);
-            yield return new WaitForSeconds(blinkDuration);
-        }
-        Debug.Log("闪烁结束");
-    }*/
     private void Explode(Cell cell)
     {
         Handheld.Vibrate();
@@ -1192,6 +1160,119 @@ public class Game : MonoBehaviour
                 }
             }
         }
+    }
+
+    private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
+    {
+        // 如果已经有闪烁在进行，先停止它
+        if (currentBlinkCoroutine != null)
+        {
+            StopCoroutine(currentBlinkCoroutine);
+        }
+
+        // 保存原始贴图和状态
+        originalTiles.Clear();
+        Dictionary<Vector3Int, bool> originalRevealedStates = new Dictionary<Vector3Int, bool>();
+        Dictionary<Vector3Int, bool> originalFlaggedStates = new Dictionary<Vector3Int, bool>();
+        Dictionary<Vector3Int, bool> originalQuestionedStates = new Dictionary<Vector3Int, bool>();
+
+        foreach (var pos in cellsToBlink)
+        {
+            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+            if (state.TryGetValue(cellPos, out Cell cell))
+            {
+                // 保存原始贴图
+                originalTiles[cellPos] = cell.tile;
+                // 保存原始状态
+                originalRevealedStates[cellPos] = cell.revealed;
+                originalFlaggedStates[cellPos] = cell.flagged;
+                originalQuestionedStates[cellPos] = cell.questioned;
+                
+                // 确保单元格显示为未揭开状态
+                cell.revealed = false;
+                cell.flagged = false;
+                cell.questioned = false;
+                state[cellPos] = cell;
+                board.tilemap.SetTile(cellPos, board.tileUnknown);
+            }
+        }
+        board.tilemap.RefreshAllTiles();
+
+        // 闪烁循环
+        for (int i = 0; i < blinkCount; i++)
+        {
+            // 设置为红色
+            foreach (var pos in cellsToBlink)
+            {
+                Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+                board.tilemap.SetTile(cellPos, tileRed);
+            }
+            board.tilemap.RefreshAllTiles();
+            yield return new WaitForSeconds(blinkDuration);
+
+            // 恢复为未揭开状态
+            foreach (var pos in cellsToBlink)
+            {
+                Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+                board.tilemap.SetTile(cellPos, board.tileUnknown);
+            }
+            board.tilemap.RefreshAllTiles();
+            yield return new WaitForSeconds(blinkDuration);
+        }
+
+        // 恢复原始状态
+        foreach (var pos in cellsToBlink)
+        {
+            Vector3Int cellPos = new Vector3Int(pos.x, pos.y, 0);
+            if (state.TryGetValue(cellPos, out Cell cell))
+            {
+                // 恢复原始状态
+                cell.revealed = originalRevealedStates[cellPos];
+                cell.flagged = originalFlaggedStates[cellPos];
+                cell.questioned = originalQuestionedStates[cellPos];
+                state[cellPos] = cell;
+
+                // 根据状态设置正确的贴图
+                if (cell.revealed)
+                {
+                    if (cell.type == Cell.Type.Mine)
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileMine);
+                    }
+                    else if (cell.type == Cell.Type.Number)
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileNumbers[cell.Number]);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileEmpty);
+                    }
+                }
+                else
+                {
+                    if (cell.flagged)
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileFlag);
+                    }
+                    else if (cell.questioned)
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileQuestion);
+                    }
+                    else
+                    {
+                        board.tilemap.SetTile(cellPos, board.tileUnknown);
+                    }
+                }
+            }
+        }
+        board.tilemap.RefreshAllTiles();
+
+        // 清理
+        originalTiles.Clear();
+        originalRevealedStates.Clear();
+        originalFlaggedStates.Clear();
+        originalQuestionedStates.Clear();
+        currentBlinkCoroutine = null;
     }
 }
 

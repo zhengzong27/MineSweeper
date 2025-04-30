@@ -3721,7 +3721,7 @@ MonoBehaviour:
   highScoreText: {fileID: 263541679}
   repositionButton: {fileID: 2111070112}
   itemButton: {fileID: 170189010}
-  menuManager: {fileID: 0}
+  menuManager: {fileID: 884528271}
   audioSource: {fileID: 1439466344}
   getScoreSound: {fileID: 8300000, guid: b1cb68e448539d348a4ee919827eb7e1, type: 3}
   boomSound: {fileID: 8300000, guid: 847ccdc086e728c49a41646f2d43a5fc, type: 3}
@@ -3730,6 +3730,9 @@ MonoBehaviour:
   TouchUI: {fileID: 8300000, guid: 81cb855537813654faf0a9e5a589943d, type: 3}
   FlagSound: {fileID: 8300000, guid: 0a263f49c6ed9b54589b4f48af7efa44, type: 3}
   boomAnimation: {fileID: 1438438396}
+  tileRed: {fileID: 11400000, guid: b959e207f808811489c5b8de882ae5db, type: 2}
+  blinkDuration: 0.1
+  blinkCount: 2
 --- !u!1 &1896930239
 GameObject:
   m_ObjectHideFlags: 0
