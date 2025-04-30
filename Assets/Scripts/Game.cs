@@ -472,22 +472,6 @@ public class Game : MonoBehaviour
 
         // 计算本区块数字
         CalculateNumbersInBlock(blockCoord);
-
-        // 更新相邻区块边缘数字
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
-                if (initializedBlocks.ContainsKey(adjacentBlock))
-                {
-                    // 只重新计算相邻区块边缘的数字
-                    CalculateNumbersForBlockBorder(adjacentBlock, blockCoord);
-                }
-            }
-        }
     }
 
     // 新增方法：只计算区块边缘的数字
@@ -553,11 +537,14 @@ public class Game : MonoBehaviour
 
     private void CalculateNumbersInBlock(Vector2Int blockCoord)
     {
+        if (!initializedBlocks.ContainsKey(blockCoord)) return;
+
         int startX = blockCoord.x * blockSize;
         int startY = blockCoord.y * blockSize;
         int endX = startX + blockSize - 1;
         int endY = startY + blockSize - 1;
 
+        // 计算本区块所有单元格的数字
         for (int x = startX; x <= endX; x++)
         {
             for (int y = startY; y <= endY; y++)
@@ -587,7 +574,12 @@ public class Game : MonoBehaviour
     private int CountAdjacentMines(int x, int y)
     {
         int count = 0;
+        Vector2Int currentBlock = new Vector2Int(
+            Mathf.FloorToInt(x / (float)blockSize),
+            Mathf.FloorToInt(y / (float)blockSize)
+        );
 
+        // 检查当前区块和相邻区块
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -598,9 +590,19 @@ public class Game : MonoBehaviour
                 int checkY = y + dy;
                 Vector3Int pos = new Vector3Int(checkX, checkY, 0);
 
-                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
+                // 检查该位置是否在已初始化的区块内
+                Vector2Int checkBlock = new Vector2Int(
+                    Mathf.FloorToInt(checkX / (float)blockSize),
+                    Mathf.FloorToInt(checkY / (float)blockSize)
+                );
+
+                // 只计算已初始化区块内的地雷
+                if (initializedBlocks.ContainsKey(checkBlock))
                 {
-                    count++;
+                    if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
+                    {
+                        count++;
+                    }
                 }
             }
         }
