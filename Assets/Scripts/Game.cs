@@ -580,12 +580,8 @@ public class Game : MonoBehaviour
     private int CountAdjacentMines(int x, int y)
     {
         int count = 0;
-        Vector2Int currentBlock = new Vector2Int(
-            Mathf.FloorToInt(x / (float)blockSize),
-            Mathf.FloorToInt(y / (float)blockSize)
-        );
 
-        // 检查当前区块和相邻区块
+        // 检查周围8个方向
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -595,19 +591,17 @@ public class Game : MonoBehaviour
                 int checkX = x + dx;
                 int checkY = y + dy;
                 Vector3Int pos = new Vector3Int(checkX, checkY, 0);
-
-                // 检查该位置是否在已初始化的区块内
                 Vector2Int checkBlock = new Vector2Int(
                     Mathf.FloorToInt(checkX / (float)blockSize),
                     Mathf.FloorToInt(checkY / (float)blockSize)
                 );
 
-                // 只计算已初始化区块内的地雷
-                if (initializedBlocks.ContainsKey(checkBlock))
+                // 检查该位置是否有地雷
+                if (blockMinePositions.TryGetValue(checkBlock, out HashSet<Vector2Int> mines))
                 {
-                if (state.TryGetValue(pos, out Cell cell) && cell.type == Cell.Type.Mine)
-                {
-                    count++;
+                    if (mines.Contains(new Vector2Int(checkX, checkY)))
+                    {
+                        count++;
                     }
                 }
             }
@@ -654,34 +648,14 @@ public class Game : MonoBehaviour
             InitializeWithFirstClick(new Vector2Int(cellPosition.x, cellPosition.y));
             isInitialized = true;
             
-            // 强制将首次点击的单元格设置为空白
-            cell = new Cell(cellPosition, Cell.Type.Empty, board.tileEmpty);
-            state[cellPosition] = cell;
+            // 重新获取初始化后的单元格
+            cell = GetCell(cellPosition.x, cellPosition.y);
             
-            // 强制刷新首次点击单元格及其周围8格
-            for (int dx = -1; dx <= 1; dx++)
-            {
-                for (int dy = -1; dy <= 1; dy++)
-                {
-                    int x = cellPosition.x + dx;
-                    int y = cellPosition.y + dy;
-                    Vector3Int pos = new Vector3Int(x, y, 0);
-
-                    // 确保这些格子不是地雷
-                    if (!state.ContainsKey(pos) || state[pos].type != Cell.Type.Mine)
-                    {
-                        int count = CountAdjacentMines(x, y);
-                        Cell neighborCell = new Cell(pos,
-                            count > 0 ? Cell.Type.Number : Cell.Type.Empty,
-                            count > 0 ? board.tileNumbers[count] : board.tileEmpty);
-                        neighborCell.Number = count;
-                        state[pos] = neighborCell;
-                    }
-                }
-            }
+            // 确保首次点击的单元格及周围是安全的
+            EnsureSafeArea(cellPosition);
         }
 
-        if (cell.type == Cell.Type.Invalid || cell.flagged) // 如果单元格无效、插旗或标记为问号
+        if (cell.type == Cell.Type.Invalid || cell.flagged) 
         {
             return;
         }
@@ -702,7 +676,6 @@ public class Game : MonoBehaviour
                 Explode(cell);
                 break;
             case Cell.Type.Empty:
-                // 播放Flood音效
                 if (audioSource != null && Floodsound != null)
                 {   
                     Handheld.Vibrate();
@@ -710,12 +683,10 @@ public class Game : MonoBehaviour
                     audioSource.PlayOneShot(Unbelievable);
                 }
                 Flood(cell);
-                UpdateScore(); // 更新积分
+                UpdateScore();
                 ifWin();
                 break;
-            case Cell.Type.Number: // 新增快速揭开逻辑
-                Debug.Log("按下数字单元格");
-                // 播放GetScore音效
+            case Cell.Type.Number:
                 if (audioSource != null && getScoreSound != null)
                 {
                     audioSource.PlayOneShot(getScoreSound);
@@ -723,7 +694,7 @@ public class Game : MonoBehaviour
                 cell.revealed = true;
                 state[cell.position] = cell;
                 board.DrawCell(cell.position, cell);
-                UpdateScore(); // 更新积分
+                UpdateScore();
                 ifWin();
                 break;
         }
@@ -881,13 +852,45 @@ public class Game : MonoBehaviour
         if (cell.revealed || cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged)
             return;
 
+        // 重新计算单元格类型
+        int mineCount = CountAdjacentMines(cell.position.x, cell.position.y);
+        Vector2Int blockCoord = new Vector2Int(
+            Mathf.FloorToInt(cell.position.x / (float)blockSize),
+            Mathf.FloorToInt(cell.position.y / (float)blockSize)
+        );
+
+        // 检查是否是地雷
+        bool isMine = false;
+        if (blockMinePositions.TryGetValue(blockCoord, out HashSet<Vector2Int> mines))
+        {
+            isMine = mines.Contains(new Vector2Int(cell.position.x, cell.position.y));
+        }
+
+        // 更新单元格类型
+        if (isMine)
+        {
+            cell.type = Cell.Type.Mine;
+            cell.tile = board.tileMine;
+        }
+        else if (mineCount > 0)
+        {
+            cell.type = Cell.Type.Number;
+            cell.tile = board.tileNumbers[mineCount];
+            cell.Number = mineCount;
+        }
+        else
+        {
+            cell.type = Cell.Type.Empty;
+            cell.tile = board.tileEmpty;
+        }
+
         cell.revealed = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell);
 
+        // 如果是空白单元格，继续扩展
         if (cell.type == Cell.Type.Empty)
         {
-            // 八方向递归（不再需要全局边界检查）
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dy = -1; dy <= 1; dy++)
@@ -897,16 +900,14 @@ public class Game : MonoBehaviour
                     int x = cell.position.x + dx;
                     int y = cell.position.y + dy;
 
-                    { // 自动调用新的区块检查
-                                       if (IsValid(x, y))
-                        {
-                            Cell neighbor = GetCell(x, y);
-                            Flood(neighbor);
-                        }
+                    if (IsValid(x, y))
+                    {
+                        Cell neighbor = GetCell(x, y);
+                        Flood(neighbor);
                     }
                 }
             }
-        } 
+        }
     }
         private void Flags(Vector3Int cellPosition)
     {
@@ -929,13 +930,43 @@ public class Game : MonoBehaviour
         // 更新棋盘渲染
         Debug.Log("Flags 方法作用于单元格: (" + cellPosition.x + ", " + cellPosition.y + ")");
     }
-    private Cell GetCell(int x,int y)
+    private Cell GetCell(int x, int y)
     {
         Vector3Int position = new Vector3Int(x, y, 0);
         if (!state.ContainsKey(position))
         {
-            // 如果单元格不存在，创建并返回一个默认的空单元格
-            state[position] = new Cell(position, Cell.Type.Empty, null);
+            // 计算该位置周围的地雷数量
+            int mineCount = CountAdjacentMines(x, y);
+            
+            // 检查该位置是否是地雷
+            Vector2Int blockCoord = new Vector2Int(
+                Mathf.FloorToInt(x / (float)blockSize),
+                Mathf.FloorToInt(y / (float)blockSize)
+            );
+            bool isMine = false;
+            if (blockMinePositions.TryGetValue(blockCoord, out HashSet<Vector2Int> mines))
+            {
+                isMine = mines.Contains(new Vector2Int(x, y));
+            }
+
+            // 根据地雷数量和是否是地雷确定单元格类型
+            Cell cell;
+            if (isMine)
+            {
+                cell = new Cell(position, Cell.Type.Mine, board.tileMine);
+            }
+            else if (mineCount > 0)
+            {
+                cell = new Cell(position, Cell.Type.Number, board.tileNumbers[mineCount]);
+                cell.Number = mineCount;
+            }
+            else
+            {
+                cell = new Cell(position, Cell.Type.Empty, board.tileEmpty);
+            }
+            
+            state[position] = cell;
+            return cell;
         }
         return state[position];
     }
@@ -1138,14 +1169,54 @@ public class Game : MonoBehaviour
             state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
         }
 
-        // 记录本区块地雷位置
+        // 记录本区块地雷位置并标记为已初始化
         blockMinePositions[blockCoord] = minesInBlock;
         initializedBlocks[blockCoord] = true;
 
-        // 计算本区块数字
-        CalculateNumbersInBlock(blockCoord);
+        // 计算本区块所有单元格的数字（包括边界）
+        for (int x = startX - 1; x <= endX + 1; x++)
+        {
+            for (int y = startY - 1; y <= endY + 1; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+                Vector2Int posBlock = new Vector2Int(
+                    Mathf.FloorToInt(x / (float)blockSize),
+                    Mathf.FloorToInt(y / (float)blockSize)
+                );
 
-        // 更新相邻区块边缘数字
+                // 跳过未初始化区块中的位置
+                if (!initializedBlocks.ContainsKey(posBlock)) continue;
+
+                // 跳过地雷位置
+                if (state.TryGetValue(position, out Cell existingCell) && existingCell.type == Cell.Type.Mine)
+                    continue;
+
+                // 计算周围地雷数量
+                int count = CountAdjacentMines(x, y);
+                Cell cell = new Cell(position,
+                    count > 0 ? Cell.Type.Number : Cell.Type.Empty,
+                    count > 0 ? board.tileNumbers[count] : board.tileEmpty);
+                cell.Number = count;
+
+                // 保持已揭开状态
+                if (state.TryGetValue(position, out Cell oldCell))
+                {
+                    cell.revealed = oldCell.revealed;
+                    cell.flagged = oldCell.flagged;
+                    cell.questioned = oldCell.questioned;
+                }
+
+                state[position] = cell;
+
+                // 如果单元格已经揭开，立即更新显示
+                if (cell.revealed)
+                {
+                    board.DrawCell(position, cell);
+                }
+            }
+        }
+
+        // 更新相邻区块的边界数字
         for (int dx = -1; dx <= 1; dx++)
         {
             for (int dy = -1; dy <= 1; dy++)
@@ -1155,7 +1226,6 @@ public class Game : MonoBehaviour
                 Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
                 if (initializedBlocks.ContainsKey(adjacentBlock))
                 {
-                    // 只重新计算相邻区块边缘的数字
                     CalculateNumbersForBlockBorder(adjacentBlock, blockCoord);
                 }
             }
@@ -1273,6 +1343,60 @@ public class Game : MonoBehaviour
         originalFlaggedStates.Clear();
         originalQuestionedStates.Clear();
         currentBlinkCoroutine = null;
+    }
+
+    // 新增方法：确保区域安全
+    private void EnsureSafeArea(Vector3Int center)
+    {
+        // 检查中心位置和周围8个格子
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                int x = center.x + dx;
+                int y = center.y + dy;
+                Vector3Int pos = new Vector3Int(x, y, 0);
+                Vector2Int blockCoord = new Vector2Int(
+                    Mathf.FloorToInt(x / (float)blockSize),
+                    Mathf.FloorToInt(y / (float)blockSize)
+                );
+
+                // 如果发现地雷，移除它
+                if (blockMinePositions.TryGetValue(blockCoord, out HashSet<Vector2Int> mines))
+                {
+                    Vector2Int checkPos = new Vector2Int(x, y);
+                    if (mines.Contains(checkPos))
+                    {
+                        mines.Remove(checkPos);
+                        
+                        // 更新单元格为空白
+                        Cell safeCell = new Cell(pos, Cell.Type.Empty, board.tileEmpty);
+                        state[pos] = safeCell;
+                    }
+                }
+            }
+        }
+
+        // 重新计算周围的数字
+        for (int dx = -2; dx <= 2; dx++)
+        {
+            for (int dy = -2; dy <= 2; dy++)
+            {
+                int x = center.x + dx;
+                int y = center.y + dy;
+                Vector3Int pos = new Vector3Int(x, y, 0);
+
+                if (state.TryGetValue(pos, out Cell cell) && cell.type != Cell.Type.Mine)
+                {
+                    // 重新计算周围地雷数量
+                    int count = CountAdjacentMines(x, y);
+                    cell.type = count > 0 ? Cell.Type.Number : Cell.Type.Empty;
+                    cell.tile = count > 0 ? board.tileNumbers[count] : board.tileEmpty;
+                    cell.Number = count;
+                    state[pos] = cell;
+                }
+            }
+        }
     }
 }
 
