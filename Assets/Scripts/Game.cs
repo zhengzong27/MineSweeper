@@ -210,6 +210,14 @@ public class Game : MonoBehaviour
         {
             Touch touch = Input.GetTouch(0); // 获取第一个触摸点
 
+            // 如果相机正在移动，不处理游戏操作
+            if (cameraController != null && cameraController.IsMoving)
+            {
+                isTouching = false;
+                touchTime = 0f;
+                return;
+            }
+
             switch (touch.phase)
             {
                 case TouchPhase.Began:
@@ -248,15 +256,8 @@ public class Game : MonoBehaviour
                     }
                     break;
 
-                case TouchPhase.Moved:
-                    if (!GameOver) // 如果游戏未结束，允许相机控制
-                    {
-                        cameraController.HandleTouchInput();
-                    }
-                    break;
-
                 case TouchPhase.Ended:
-                    if (isTouching)
+                    if (isTouching && !cameraController.IsMoving)
                     {
                         if (Time.time - touchTime < 0.25f) // 短按操作
                         {
