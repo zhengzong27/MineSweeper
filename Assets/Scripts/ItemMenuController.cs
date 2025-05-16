@@ -268,8 +268,32 @@ public class ItemMenuController : MonoBehaviour
     private void OnVibrationToggleChanged(bool isOn)
     {
         IsVibrationEnabled = isOn;
-        // 保存设置
+        Debug.Log($"震动设置已更改: {isOn}");
+        
+        // 立即保存设置
         SaveSettings();
+        
+        // 测试震动
+        if (isOn)
+        {
+            #if UNITY_ANDROID
+            try
+            {
+                using (AndroidJavaClass vibrationHelper = new AndroidJavaClass("com.example.vibration.VibrationHelper"))
+                {
+                    vibrationHelper.CallStatic("Vibrate", 100);
+                    Debug.Log("测试震动已触发");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("测试震动失败: " + e.Message);
+                Handheld.Vibrate();
+            }
+            #else
+            Handheld.Vibrate();
+            #endif
+        }
     }
 
     // 更新音频状态
@@ -304,7 +328,8 @@ public class ItemMenuController : MonoBehaviour
     {
         PlayerPrefs.SetInt("AudioEnabled", IsAudioEnabled ? 1 : 0);
         PlayerPrefs.SetInt("VibrationEnabled", IsVibrationEnabled ? 1 : 0);
-        PlayerPrefs.Save(); // 确保立即保存到磁盘
+        PlayerPrefs.Save();
+        Debug.Log($"设置已保存 - 音频: {IsAudioEnabled}, 震动: {IsVibrationEnabled}");
     }
 
     // 加载设置
@@ -313,15 +338,18 @@ public class ItemMenuController : MonoBehaviour
         // 从PlayerPrefs加载设置，如果不存在则默认为true
         IsAudioEnabled = PlayerPrefs.GetInt("AudioEnabled", 1) == 1;
         IsVibrationEnabled = PlayerPrefs.GetInt("VibrationEnabled", 1) == 1;
+        Debug.Log($"设置已加载 - 音频: {IsAudioEnabled}, 震动: {IsVibrationEnabled}");
 
         // 更新UI状态
         if (audioToggle != null)
         {
             audioToggle.isOn = IsAudioEnabled;
+            Debug.Log($"音频Toggle已更新: {IsAudioEnabled}");
         }
         if (vibrationToggle != null)
         {
             vibrationToggle.isOn = IsVibrationEnabled;
+            Debug.Log($"震动Toggle已更新: {IsVibrationEnabled}");
         }
 
         // 更新音频状态

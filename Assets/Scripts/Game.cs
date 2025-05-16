@@ -20,6 +20,10 @@ public class Game : MonoBehaviour
     private Dictionary<Vector3Int, Cell> state;
     private Vector2 initialTouchPosition; // 初始触摸位置
     private Vector3Int initialCellPosition; // 初始单元格位置
+    private ItemMenuController itemMenuController; // 添加ItemMenuController引用
+
+    // 添加震动持续时间常量
+    private const long VIBRATION_DURATION = 100; // 震动持续时间（毫秒）
 
     [Header("Dynamic Map Settings")]
     public int viewportWidth = 8; // 摄像头可见宽度
@@ -85,6 +89,9 @@ public class Game : MonoBehaviour
         // 加载保存的最高分
         highScore = PlayerPrefs.GetInt("HighScore", 0);
         
+        // 获取ItemMenuController实例
+        itemMenuController = ItemMenuController.Instance;
+        
         UpdateScoreUI();
     }
 
@@ -95,13 +102,41 @@ public class Game : MonoBehaviour
         {
             menuManager = FindObjectOfType<Menu>();
         }
+
+        // 确保获取ItemMenuController实例
+        if (itemMenuController == null)
+        {
+            itemMenuController = ItemMenuController.Instance;
+            Debug.Log("ItemMenuController状态: " + (itemMenuController != null ? "已获取" : "未获取"));
+        }
+        
+        // 初始化VibrationHelper
+        #if UNITY_ANDROID
+        try
+        {
+            using (AndroidJavaClass vibrationHelper = new AndroidJavaClass("com.unity3d.player.VibrationHelper"))
+            {
+                vibrationHelper.CallStatic("Initialize");
+                Debug.Log("VibrationHelper初始化成功");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("VibrationHelper初始化失败: " + e.Message);
+        }
+        #endif
+
         NewGame();
     }
 
     private void OnEnable()
     {
-        // 添加场景加载完成的监听
-        SceneManager.sceneLoaded += OnSceneLoaded;
+        // 确保在启用时获取ItemMenuController
+        if (itemMenuController == null)
+        {
+            itemMenuController = ItemMenuController.Instance;
+            Debug.Log("OnEnable时获取ItemMenuController状态: " + (itemMenuController != null ? "成功" : "失败"));
+        }
     }
 
     private void OnDisable()
@@ -678,7 +713,7 @@ public class Game : MonoBehaviour
             case Cell.Type.Empty:
                 if (audioSource != null && Floodsound != null)
                 {   
-                    Handheld.Vibrate();
+                    TriggerVibration();
                     audioSource.PlayOneShot(Floodsound);
                     audioSource.PlayOneShot(Unbelievable);
                 }
@@ -789,7 +824,7 @@ public class Game : MonoBehaviour
 
     private void Explode(Cell cell)
     {
-        Handheld.Vibrate();
+        TriggerVibration();
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
         GameOver = true;
@@ -1396,6 +1431,48 @@ public class Game : MonoBehaviour
                     state[pos] = cell;
                 }
             }
+        }
+    }
+
+    // 添加统一的震动方法
+    private void TriggerVibration()
+    {
+        // 重新获取ItemMenuController实例（如果为null）
+        if (itemMenuController == null)
+        {
+            itemMenuController = ItemMenuController.Instance;
+            Debug.Log("重新获取ItemMenuController状态: " + (itemMenuController != null ? "成功" : "失败"));
+        }
+
+        bool shouldVibrate = itemMenuController != null && itemMenuController.IsVibrationEnabled;
+        Debug.Log($"震动状态检查 - Controller存在: {itemMenuController != null}, 震动已启用: {itemMenuController?.IsVibrationEnabled}");
+
+        if (shouldVibrate)
+        {
+            #if UNITY_ANDROID
+            try
+            {
+                using (AndroidJavaClass vibrationHelper = new AndroidJavaClass("com.unity3d.player.VibrationHelper"))
+                {
+                    vibrationHelper.CallStatic("Vibrate", VIBRATION_DURATION);
+                    Debug.Log("Android震动已触发");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("Android震动触发失败: " + e.Message);
+                // 如果原生方法失败，尝试使用Unity的方法
+                Handheld.Vibrate();
+                Debug.Log("已切换到Unity默认震动方法");
+            }
+            #else
+            Handheld.Vibrate();
+            Debug.Log("非Android平台震动已触发");
+            #endif
+        }
+        else
+        {
+            Debug.Log("震动未触发 - 震动功能未启用或Controller未找到");
         }
     }
 }
