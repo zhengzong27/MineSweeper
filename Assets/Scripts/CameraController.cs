@@ -10,7 +10,7 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float maxZoom = 20f;
 
     private Camera controlledCamera;
-    private Vector3 lastTouchPosition;
+    private Vector2 lastTouchPosition;
     private bool isDragging = false;
 
     private void Awake()
@@ -27,17 +27,23 @@ public class CameraController : MonoBehaviour
             switch (touch.phase)
             {
                 case TouchPhase.Began:
-                    lastTouchPosition = GetWorldPosition(touch.position);
+                    lastTouchPosition = touch.position;
                     isDragging = true;
                     break;
 
                 case TouchPhase.Moved:
                     if (isDragging)
                     {
-                        Vector3 currentPosition = GetWorldPosition(touch.position);
-                        Vector3 delta = lastTouchPosition - currentPosition;
-                        MoveCamera(delta);
-                        lastTouchPosition = currentPosition;
+                        Vector2 delta = touch.position - lastTouchPosition;
+                        
+                        float orthoSize = controlledCamera.orthographicSize;
+                        float screenHeight = Screen.height;
+                        float worldSpaceMove = (orthoSize * 2f) / screenHeight;
+                        
+                        Vector3 moveDirection = new Vector3(-delta.x * worldSpaceMove, -delta.y * worldSpaceMove, 0);
+                        transform.position += moveDirection * moveSpeed * Time.deltaTime;
+                        
+                        lastTouchPosition = touch.position;
                     }
                     break;
 
@@ -64,28 +70,12 @@ public class CameraController : MonoBehaviour
     }
 
     /// <summary>
-    /// 平移移动
-    /// </summary>
-    private void MoveCamera(Vector3 direction)
-    {
-        transform.position += direction * moveSpeed * Time.deltaTime;
-    }
-
-    /// <summary>
     /// 平移缩放
     /// </summary>
     private void ZoomCamera(float increment)
     {
         float newSize = controlledCamera.orthographicSize - increment;
         controlledCamera.orthographicSize = Mathf.Clamp(newSize, minZoom, maxZoom);
-    }
-
-    /// <summary>
-    /// 屏幕转换为世界坐标
-    /// </summary>
-    private Vector3 GetWorldPosition(Vector2 screenPosition)
-    {
-        return controlledCamera.ScreenToWorldPoint(new Vector3(screenPosition.x, screenPosition.y, controlledCamera.nearClipPlane));
     }
 
     #region Public Interface
@@ -95,7 +85,7 @@ public class CameraController : MonoBehaviour
     /// </summary>
     public void SetMoveSpeed(float speed)
     {
-        moveSpeed = speed;
+        moveSpeed = Mathf.Max(0.1f, speed);
     }
 
     /// <summary>
