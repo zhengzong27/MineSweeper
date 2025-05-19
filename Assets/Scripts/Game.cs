@@ -1128,20 +1128,115 @@ public class Game : MonoBehaviour
         {
             // 获取相机组件
             Camera mainCamera = Camera.main;
-            if (mainCamera != null)
+            if (mainCamera != null && lastOperationPosition != Vector3.zero)
             {
-                // 计算相机应该移动到的位置
-                // 由于是正交相机，我们需要考虑orthographicSize
                 float cameraZ = mainCamera.transform.position.z;
+                
+                // 获取相机的正交大小和宽高比
+                float orthographicSize = mainCamera.orthographicSize;
+                float aspectRatio = mainCamera.aspect;
+                
+                // 计算世界空间中的视口大小
+                float viewportWorldWidth = orthographicSize * 2 * aspectRatio;
+                float viewportWorldHeight = orthographicSize * 2;
+
+                // 获取当前地图的实际位置
+                Vector3 mapPosition = board.transform.position;
+                
+                // 计算相对于地图的偏移
+                Vector3 relativePosition = lastOperationPosition - mapPosition;
+                
+                // 计算相机的目标位置，考虑地图位置
                 Vector3 targetPosition = new Vector3(
-                    lastOperationPosition.x-4,
-                    lastOperationPosition.y-7,
+                    lastOperationPosition.x - (viewportWorldWidth * 0.5f),
+                    lastOperationPosition.y - (viewportWorldHeight * 0.5f),
                     cameraZ
                 );
 
-                // 设置相机位置
-                mainCamera.transform.position = targetPosition;
+                // 添加边界检查，防止相机移动到无效区域
+                float minX = -viewportWorldWidth * 2;
+                float maxX = viewportWorldWidth * 2;
+                float minY = -viewportWorldHeight * 2;
+                float maxY = viewportWorldHeight * 2;
+
+                targetPosition.x = Mathf.Clamp(targetPosition.x, minX, maxX);
+                targetPosition.y = Mathf.Clamp(targetPosition.y, minY, maxY);
+
+                Debug.Log($"重定位开始 - 最后操作位置: {lastOperationPosition}");
+                Debug.Log($"重定位开始 - 地图位置: {mapPosition}");
+                Debug.Log($"重定位开始 - 相对位置: {relativePosition}");
+                Debug.Log($"重定位开始 - 目标位置: {targetPosition}");
+                Debug.Log($"重定位开始 - 当前相机位置: {mainCamera.transform.position}");
+                Debug.Log($"重定位开始 - 视口世界大小: {viewportWorldWidth}x{viewportWorldHeight}");
+                
+                // 使用平滑移动
+                StartCoroutine(SmoothCameraMove(mainCamera.transform, targetPosition, 0.5f));
             }
+            else if (mainCamera != null)
+            {
+                // 如果没有最后操作位置，回到原点
+                Vector3 defaultPosition = new Vector3(0, 0, mainCamera.transform.position.z);
+                StartCoroutine(SmoothCameraMove(mainCamera.transform, defaultPosition, 0.5f));
+            }
+        }
+    }
+
+    private IEnumerator SmoothCameraMove(Transform cameraTransform, Vector3 targetPosition, float duration)
+    {
+        Vector3 startPosition = cameraTransform.position;
+        float elapsedTime = 0;
+        Camera mainCamera = Camera.main;
+        
+        Debug.Log($"开始移动 - 起始位置: {startPosition}");
+        Debug.Log($"开始移动 - 目标位置: {targetPosition}");
+        
+        // 验证目标位置是否有效
+        if (float.IsNaN(targetPosition.x) || float.IsNaN(targetPosition.y) || 
+            float.IsInfinity(targetPosition.x) || float.IsInfinity(targetPosition.y))
+        {
+            Debug.LogError("无效的目标位置，取消移动");
+            yield break;
+        }
+        
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / duration;
+            
+            // 使用平滑插值
+            t = t * t * (3f - 2f * t);
+            
+            // 计算当前位置
+            Vector3 currentPosition = Vector3.Lerp(startPosition, targetPosition, t);
+            
+            // 验证当前位置是否有效
+            if (float.IsNaN(currentPosition.x) || float.IsNaN(currentPosition.y) || 
+                float.IsInfinity(currentPosition.x) || float.IsInfinity(currentPosition.y))
+            {
+                Debug.LogError("无效的当前位置，取消移动");
+                yield break;
+            }
+            
+            cameraTransform.position = currentPosition;
+            
+            // 验证目标在视口中的位置
+            if (mainCamera != null && lastOperationPosition != Vector3.zero)
+            {
+                Vector3 viewportPoint = mainCamera.WorldToViewportPoint(lastOperationPosition);
+                Debug.Log($"移动中 - 目标在视口中的位置: {viewportPoint}, 相机位置: {currentPosition}");
+            }
+            
+            yield return null;
+        }
+        
+        // 确保最终位置精确
+        cameraTransform.position = targetPosition;
+        
+        // 最终验证
+        if (mainCamera != null && lastOperationPosition != Vector3.zero)
+        {
+            Vector3 finalViewportPoint = mainCamera.WorldToViewportPoint(lastOperationPosition);
+            Debug.Log($"移动完成 - 最终视口位置: {finalViewportPoint}, 相机位置: {cameraTransform.position}");
         }
     }
 
