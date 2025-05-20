@@ -76,6 +76,11 @@ public class Game : MonoBehaviour
     public GameObject fireworkPrefab; // 烟花预制体
     private List<GameObject> activeFireworks = new List<GameObject>(); // 当前活跃的烟花
 
+    public MinePatternManager patternManager; // 图案管理器
+
+    private bool isFirstGeneration = true; // 是否是第一次生成
+    private Vector2Int? patternBlockPosition = null; // 记录图案所在的区块位置
+
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
@@ -850,8 +855,9 @@ public class Game : MonoBehaviour
         if (boomAnimation != null)
         {
             boomAnimation.SetActive(true);
-            // 使用固定位置，比如屏幕中心
-            boomAnimation.transform.position = new Vector3(0, 2, 0);
+            // 使用当前摄像头的中央位置
+            Vector3 cameraCenter = Camera.main.transform.position;
+            boomAnimation.transform.position = new Vector3(cameraCenter.x, cameraCenter.y+2, 0);
         }
 
         // 播放爆炸音效
@@ -947,7 +953,7 @@ public class Game : MonoBehaviour
             }
         }
     }
-        private void Flags(Vector3Int cellPosition)
+    private void Flags(Vector3Int cellPosition)
     {
         // 获取初始单元格
         Cell cell = GetCell(cellPosition.x, cellPosition.y);
@@ -959,10 +965,17 @@ public class Game : MonoBehaviour
         cell.flagged = !cell.flagged;
         state[cellPosition] = cell;
         board.DrawCell(cellPosition, cell); // 局部更新这个单元格
+
+        // 更新图案管理器中的插旗状态
+        if (patternManager != null)
+        {
+            patternManager.UpdateFlagPosition(new Vector2Int(cellPosition.x, cellPosition.y), cell.flagged);
+        }
+
         // 如果标记成功，触发震动
         if (cell.flagged)
         {
-                audioSource.PlayOneShot(FlagSound);
+            audioSource.PlayOneShot(FlagSound);
         }
         board.tilemap.RefreshAllTiles();
         // 更新棋盘渲染
@@ -1268,6 +1281,86 @@ public class Game : MonoBehaviour
         int endX = startX + blockSize - 1;
         int endY = startY + blockSize - 1;
 
+        // 检查是否是第一次生成，如果是，强制在中心位置生成第一个图案
+        if (isFirstGeneration && patternManager != null && patternManager.availablePatterns.Count > 0)
+        {
+            // 计算地图中心区块位置
+            Vector2Int centerBlock = new Vector2Int(0, 0);
+            patternBlockPosition = centerBlock;
+            
+            // 设置图案偏移到中心区块的左上角
+            patternManager.availablePatterns[0].patternOffset = new Vector2Int(
+                centerBlock.x * blockSize,
+                centerBlock.y * blockSize
+            );
+            
+            // 将图案添加到活跃图案中
+            patternManager.TrySpawnPattern(centerBlock);
+            isFirstGeneration = false;
+        }
+
+        // 检查当前区块是否在图案范围内
+        bool isInPatternArea = false;
+        if (patternBlockPosition.HasValue)
+        {
+            // 检查当前区块是否是图案的四个区块之一
+            Vector2Int patternPos = patternBlockPosition.Value;
+            isInPatternArea = (blockCoord.x >= patternPos.x && blockCoord.x <= patternPos.x + 1 &&
+                             blockCoord.y >= patternPos.y && blockCoord.y <= patternPos.y + 1);
+        }
+
+        if (isInPatternArea)
+        {
+            // 如果区块在图案范围内，只生成图案中的地雷
+            InitializePatternBlock(blockCoord);
+        }
+        else
+        {
+            // 正常生成地雷
+            InitializeNormalBlock(blockCoord);
+        }
+
+        // 标记区块为已初始化
+        initializedBlocks[blockCoord] = true;
+    }
+
+    private void InitializePatternBlock(Vector2Int blockCoord)
+    {
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        HashSet<Vector2Int> minesInBlock = new HashSet<Vector2Int>();
+
+        // 遍历区块中的所有位置
+        for (int x = startX; x < startX + blockSize; x++)
+        {
+            for (int y = startY; y < startY + blockSize; y++)
+            {
+                Vector2Int pos = new Vector2Int(x, y);
+                
+                // 检查该位置是否应该是地雷（考虑图案）
+                if (patternManager != null && patternManager.ShouldBeMine(pos))
+                {
+                    minesInBlock.Add(pos);
+                    Vector3Int position = new Vector3Int(x, y, 0);
+                    state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
+                }
+            }
+        }
+
+        // 记录本区块地雷位置
+        blockMinePositions[blockCoord] = minesInBlock;
+
+        // 计算本区块所有单元格的数字
+        CalculateNumbersInBlock(blockCoord);
+    }
+
+    private void InitializeNormalBlock(Vector2Int blockCoord)
+    {
+        int startX = blockCoord.x * blockSize;
+        int startY = blockCoord.y * blockSize;
+        int endX = startX + blockSize - 1;
+        int endY = startY + blockSize - 1;
+
         // 计算本区块地雷数量（基于密度）
         int blockMineCount = Mathf.RoundToInt(blockSize * blockSize * mineDensity);
         blockMineCount = Mathf.Max(1, blockMineCount);
@@ -1302,67 +1395,11 @@ public class Game : MonoBehaviour
             state[position] = new Cell(position, Cell.Type.Mine, board.tileMine);
         }
 
-        // 记录本区块地雷位置并标记为已初始化
+        // 记录本区块地雷位置
         blockMinePositions[blockCoord] = minesInBlock;
-        initializedBlocks[blockCoord] = true;
 
-        // 计算本区块所有单元格的数字（包括边界）
-        for (int x = startX - 1; x <= endX + 1; x++)
-        {
-            for (int y = startY - 1; y <= endY + 1; y++)
-            {
-                Vector3Int position = new Vector3Int(x, y, 0);
-                Vector2Int posBlock = new Vector2Int(
-                    Mathf.FloorToInt(x / (float)blockSize),
-                    Mathf.FloorToInt(y / (float)blockSize)
-                );
-
-                // 跳过未初始化区块中的位置
-                if (!initializedBlocks.ContainsKey(posBlock)) continue;
-
-                // 跳过地雷位置
-                if (state.TryGetValue(position, out Cell existingCell) && existingCell.type == Cell.Type.Mine)
-                    continue;
-
-                // 计算周围地雷数量
-                int count = CountAdjacentMines(x, y);
-                Cell cell = new Cell(position,
-                    count > 0 ? Cell.Type.Number : Cell.Type.Empty,
-                    count > 0 ? board.tileNumbers[count] : board.tileEmpty);
-                cell.Number = count;
-
-                // 保持已揭开状态
-                if (state.TryGetValue(position, out Cell oldCell))
-                {
-                    cell.revealed = oldCell.revealed;
-                    cell.flagged = oldCell.flagged;
-                    cell.questioned = oldCell.questioned;
-                }
-
-                state[position] = cell;
-
-                // 如果单元格已经揭开，立即更新显示
-                if (cell.revealed)
-                {
-                    board.DrawCell(position, cell);
-                }
-            }
-        }
-
-        // 更新相邻区块的边界数字
-        for (int dx = -1; dx <= 1; dx++)
-        {
-            for (int dy = -1; dy <= 1; dy++)
-            {
-                if (dx == 0 && dy == 0) continue;
-
-                Vector2Int adjacentBlock = new Vector2Int(blockCoord.x + dx, blockCoord.y + dy);
-                if (initializedBlocks.ContainsKey(adjacentBlock))
-                {
-                    CalculateNumbersForBlockBorder(adjacentBlock, blockCoord);
-                }
-            }
-        }
+        // 计算本区块所有单元格的数字
+        CalculateNumbersInBlock(blockCoord);
     }
 
     private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
