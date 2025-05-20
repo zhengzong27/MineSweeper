@@ -72,6 +72,10 @@ public class Game : MonoBehaviour
     private Dictionary<Vector3Int, TileBase> originalTiles = new Dictionary<Vector3Int, TileBase>(); // 存储原始贴图
     private Coroutine currentBlinkCoroutine; // 当前闪烁协程
 
+    [Header("Firework Effect")]
+    public GameObject fireworkPrefab; // 烟花预制体
+    private List<GameObject> activeFireworks = new List<GameObject>(); // 当前活跃的烟花
+
     private void Awake()
     {
         board = GetComponentInChildren<Board>();
@@ -183,10 +187,12 @@ public class Game : MonoBehaviour
             cameraController.HandleTouchInput();
             UpdateDynamicMap();
             Touch();
+            CleanupFireworks(); // 清理烟花
         }
         else if (!GameOver) // 游戏未结束但菜单打开时
         {
             UpdateDynamicMap();
+            CleanupFireworks(); // 清理烟花
         }
         else
         {
@@ -714,7 +720,6 @@ public class Game : MonoBehaviour
             case Cell.Type.Empty:
                 if (audioSource != null && Floodsound != null)
                 {   
-                    TriggerVibration();
                     audioSource.PlayOneShot(Floodsound);
                     audioSource.PlayOneShot(Unbelievable);
                 }
@@ -829,37 +834,24 @@ public class Game : MonoBehaviour
         Debug.Log("你输了!");
         Restart.gameObject.SetActive(true);
         GameOver = true;
+        
         // 禁用Item按钮
         if (itemButton != null)
         {
             itemButton.GetComponent<Button>().interactable = false;
         }
+
         cell.revealed = true;
         cell.exploded = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell); // 更新爆炸的地雷
 
-        // 启用并播放爆炸动画
+        // 播放爆炸动画（固定在指定位置）
         if (boomAnimation != null)
         {
-            // 计算摄像机上中位置
-            Camera cam = Camera.main;
-            if (cam != null)
-            {
-                // z 取 boomAnimation 当前z与摄像机z的距离
-                float zOffset = Mathf.Abs(boomAnimation.transform.position.z - cam.transform.position.z);
-                Vector3 viewPos = new Vector3(0.5f, 0.65f, zOffset);
-                Vector3 worldPos = cam.ViewportToWorldPoint(viewPos);
-                worldPos.z = boomAnimation.transform.position.z; // 保持原z
-                boomAnimation.transform.position = worldPos;
-            }
-
             boomAnimation.SetActive(true);
-            Animator animator = boomAnimation.GetComponent<Animator>();
-            if (animator != null)
-            {
-                animator.Play("BoomAnimation", 0, 0f);
-            }
+            // 使用固定位置，比如屏幕中心
+            boomAnimation.transform.position = new Vector3(0, 2, 0);
         }
 
         // 播放爆炸音效
@@ -868,7 +860,7 @@ public class Game : MonoBehaviour
             audioSource.PlayOneShot(boomSound);
         }
 
-        // 遍历所有区块中的地雷（不再依赖width/height）
+        // 遍历所有区块中的地雷
         foreach (var block in blockMinePositions.Values)
         {
             foreach (Vector2Int minePos in block)
@@ -923,6 +915,16 @@ public class Game : MonoBehaviour
         cell.revealed = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell);
+
+        // 只在首次点击位置触发烟花效果
+        if (cell.position == lastOperationPosition)
+        {
+            if (board != null && board.tilemap != null)
+            {
+                Vector3 worldPos = board.tilemap.GetCellCenterWorld(cell.position);
+                SpawnFirework(worldPos);
+            }
+        }
 
         // 如果是空白单元格，继续扩展
         if (cell.type == Cell.Type.Empty)
@@ -1570,6 +1572,51 @@ public class Game : MonoBehaviour
         {
             Debug.Log("震动未触发 - 震动功能未启用或Controller未找到");
         }
+    }
+
+    private void SpawnFirework(Vector3 position)
+    {
+        if (fireworkPrefab == null)
+        {
+            Debug.LogError("Game: Cannot spawn firework - fireworkPrefab is not set!");
+            return;
+        }
+
+        try
+        {
+            // 实例化烟花预制体
+            GameObject firework = Instantiate(fireworkPrefab, position, Quaternion.identity);
+            if (firework == null)
+            {
+                Debug.LogError("Game: Failed to instantiate firework prefab!");
+                return;
+            }
+
+            // 获取并检查FireworkEffect组件
+            FireworkEffect fireworkEffect = firework.GetComponent<FireworkEffect>();
+            if (fireworkEffect == null)
+            {
+                Debug.LogError("Game: FireworkEffect component is missing from the prefab!");
+                Destroy(firework);
+                return;
+            }
+
+            // 播放效果
+            fireworkEffect.PlayFirework();
+
+            // 添加到活跃列表
+            activeFireworks.Add(firework);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Game: Error spawning firework: {e.Message}");
+        }
+    }
+
+    private void CleanupFireworks()
+    {
+        // 清理已经销毁的烟花
+        activeFireworks.RemoveAll(firework => firework == null);
     }
 }
 
