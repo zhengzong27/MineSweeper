@@ -48,6 +48,7 @@ public class Game : MonoBehaviour
     [Header("UI Elements")]
     public TMP_Text scoreText; // 积分显示文本
     public TMP_Text highScoreText; // 最高分显示文本
+    public TMP_Text gemCountText; // 宝石数量显示文本
     private int highScore = 0; // 最高分记录
     public Image repositionButton; // 视角回调按钮
     private Vector3 lastOperationPosition; // 记录最后一次操作位置
@@ -80,6 +81,13 @@ public class Game : MonoBehaviour
 
     private bool isFirstGeneration = true; // 是否是第一次生成
     private Vector2Int? patternBlockPosition = null; // 记录图案所在的区块位置
+
+    [Header("Gem Settings")]
+    public float gemSpawnChance = 0.1f; // 宝石生成概率
+    private int gemCount = 0; // 宝石数量
+    private const string GEM_COUNT_KEY = "GemCount"; // 用于保存宝石数量的键
+    private int emptyCellCounter = 0; // 新增：空白单元格计数器
+    private const int GEM_GUARANTEE_THRESHOLD = 15; // 新增：宝石保证阈值
 
     private void Awake()
     {
@@ -134,6 +142,10 @@ public class Game : MonoBehaviour
             Debug.LogError("VibrationHelper初始化失败: " + e.Message);
         }
         #endif
+
+        // 加载保存的宝石数量
+        gemCount = PlayerPrefs.GetInt(GEM_COUNT_KEY, 0);
+        UpdateScoreUI();
 
         NewGame();
     }
@@ -292,8 +304,10 @@ public class Game : MonoBehaviour
         Vector3Int cameraCellPosition = board.tilemap.WorldToCell(cameraCenter);
         Vector3Int cameraCellPos = board.tilemap.WorldToCell(cameraCenter);
         Vector2Int currentBlock = new Vector2Int(
-        Mathf.FloorToInt(cameraCellPos.x / (float)blockSize),
-        Mathf.FloorToInt(cameraCellPos.y / (float)blockSize));
+            Mathf.FloorToInt(cameraCellPos.x / (float)blockSize),
+            Mathf.FloorToInt(cameraCellPos.y / (float)blockSize)
+        );
+
         // 初始化视野内及缓冲区的区块
         for (int dx = -blockBuffer; dx <= blockBuffer; dx++)
         {
@@ -302,6 +316,7 @@ public class Game : MonoBehaviour
                 InitializeBlock(new Vector2Int(currentBlock.x + dx, currentBlock.y + dy));
             }
         }
+
         // 如果摄像头位置没有显著变化，则不更新地图
         if (Mathf.Abs(cameraCellPosition.x - lastCameraCellPosition.x) < viewportWidth / 4 &&
             Mathf.Abs(cameraCellPosition.y - lastCameraCellPosition.y) < viewportHeight / 4)
@@ -316,6 +331,7 @@ public class Game : MonoBehaviour
         int endX = cameraCellPosition.x + viewportWidth / 2 + bufferSize;
         int startY = cameraCellPosition.y - viewportHeight / 2 - bufferSize;
         int endY = cameraCellPosition.y + viewportHeight / 2 + bufferSize;
+
         // 记录当前活跃单元格
         HashSet<Vector3Int> currentActiveCells = new HashSet<Vector3Int>();
         for (int x = startX; x <= endX; x++)
@@ -328,7 +344,27 @@ public class Game : MonoBehaviour
                 // 动态生成新单元格到字典（如果不存在）
                 if (!state.ContainsKey(position))
                 {
-                    state[position] = new Cell(position, Cell.Type.Empty, null);
+                    // 计算周围地雷数量
+                    int count = CountAdjacentMines(x, y);
+                    Cell cell;
+                    if (count > 0)
+                    {
+                        cell = new Cell(position, Cell.Type.Number, board.tileNumbers[count]);
+                        cell.Number = count;
+                    }
+                    else
+                    {
+                        cell = new Cell(position, Cell.Type.Empty, board.tileEmpty);
+                        // 在空白单元格中生成宝石
+                        if (Random.value <= gemSpawnChance)
+                        {
+                            cell.type = Cell.Type.Gem;
+                            cell.tile = board.tileGem;
+                            cell.isGem = true;
+                            Debug.Log($"在位置 ({x}, {y}) 生成宝石，贴图状态: {(board.tileGem != null ? "已设置" : "未设置")}");
+                        }
+                    }
+                    state[position] = cell;
                 }
             }
         }
@@ -336,77 +372,24 @@ public class Game : MonoBehaviour
         // 清理视野外的贴图（仅在启用动态卸载时）
         if (enableDynamicUnloading)
         {
-            // 计算需要清理的单元格：上一次活跃但当前不活跃的
             HashSet<Vector3Int> cellsToUnload = new HashSet<Vector3Int>(lastActiveCells);
             cellsToUnload.ExceptWith(currentActiveCells);
 
-            // 清除这些单元格的贴图
             foreach (Vector3Int position in cellsToUnload)
             {
-                // 仅清除贴图，不修改state字典
                 board.tilemap.SetTile(position, null);
             }
         }
+
         // 绘制当前活跃单元格
         foreach (Vector3Int position in currentActiveCells)
         {
-            // 检查该位置所在的区块是否已初始化
-            Vector2Int blockCoord = new Vector2Int(
-                Mathf.FloorToInt(position.x / (float)blockSize),
-                Mathf.FloorToInt(position.y / (float)blockSize)
-            );
-            
-            // 如果区块未初始化，跳过该单元格的处理
-            if (!initializedBlocks.ContainsKey(blockCoord))
+            if (state.TryGetValue(position, out Cell cell))
             {
-                continue;
-            }
-
-            if (!state.TryGetValue(position, out Cell cell))
-            {
-                // 计算周围地雷数量
-                int count = CountAdjacentMines(position.x, position.y);
-                cell = new Cell(position,
-                               count > 0 ? Cell.Type.Number : Cell.Type.Empty,
-                               count > 0 ? board.tileNumbers[count] : board.tileEmpty);
-                cell.Number = count;
-                state[position] = cell;
-            }
-            
-                // 根据单元格状态设置贴图
-                if (cell.revealed)
-                {
-                    // 已揭开的单元格
-                    if (cell.type == Cell.Type.Mine)
-                    {
-                        board.tilemap.SetTile(position, board.tileMine);
-                    }
-                    else if (cell.type == Cell.Type.Number)
-                    {
-                        board.tilemap.SetTile(position, board.tileNumbers[cell.Number]);
-                    }
-                    else
-                    {
-                        board.tilemap.SetTile(position, board.tileEmpty);
-                    }
-                }
-                else
-                {
-                    // 未揭开的单元格
-                    if (cell.flagged)
-                    {
-                        board.tilemap.SetTile(position, board.tileFlag);
-                    }
-                    else if (cell.questioned)
-                    {
-                        board.tilemap.SetTile(position, board.tileQuestion);
-                    }
-                    else
-                    {
-                        board.tilemap.SetTile(position, board.tileUnknown);
-                }
+                board.DrawCell(position, cell);
             }
         }
+
         lastActiveCells = currentActiveCells;
     }
 
@@ -465,6 +448,32 @@ public class Game : MonoBehaviour
                         count > 0 ? board.tileNumbers[count] : board.tileEmpty);
                     cell.Number = count;
                     state[pos] = cell;
+                }
+            }
+        }
+
+        // 在首次点击区域生成宝石
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                int x = firstClick.x + dx;
+                int y = firstClick.y + dy;
+                Vector3Int pos = new Vector3Int(x, y, 0);
+
+                // 只在地雷和数字单元格之外的位置生成宝石
+                if (state.ContainsKey(pos) && 
+                    state[pos].type != Cell.Type.Mine && 
+                    state[pos].type != Cell.Type.Number)
+                {
+                    // 根据概率生成宝石
+                    if (Random.value <= gemSpawnChance)
+                    {
+                        Cell cell = new Cell(pos, Cell.Type.Gem, board.tileGem);
+                        cell.isGem = true;
+                        state[pos] = cell;
+                        Debug.Log($"在位置 ({x}, {y}) 生成宝石");
+                    }
                 }
             }
         }
@@ -886,6 +895,12 @@ public class Game : MonoBehaviour
         if (cell.revealed || cell.type == Cell.Type.Mine || cell.type == Cell.Type.Invalid || cell.flagged)
             return;
 
+        // 如果是宝石单元格，收集宝石
+        if (cell.type == Cell.Type.Gem)
+        {
+            AddGem();
+        }
+
         // 重新计算单元格类型
         int mineCount = CountAdjacentMines(cell.position.x, cell.position.y);
         Vector2Int blockCoord = new Vector2Int(
@@ -900,7 +915,8 @@ public class Game : MonoBehaviour
             isMine = mines.Contains(new Vector2Int(cell.position.x, cell.position.y));
         }
 
-        // 更新单元格类型
+        // 更新单元格类型，但保持宝石状态
+        bool wasGem = cell.type == Cell.Type.Gem;
         if (isMine)
         {
             cell.type = Cell.Type.Mine;
@@ -918,6 +934,14 @@ public class Game : MonoBehaviour
             cell.tile = board.tileEmpty;
         }
 
+        // 如果原来是宝石，保持宝石状态
+        if (wasGem)
+        {
+            cell.type = Cell.Type.Gem;
+            cell.tile = board.tileGem;
+            cell.isGem = true;
+        }
+
         cell.revealed = true;
         state[cell.position] = cell;
         board.DrawCell(cell.position, cell);
@@ -932,8 +956,8 @@ public class Game : MonoBehaviour
             }
         }
 
-        // 如果是空白单元格，继续扩展
-        if (cell.type == Cell.Type.Empty)
+        // 如果是空白单元格或宝石单元格，继续扩展
+        if (cell.type == Cell.Type.Empty || cell.type == Cell.Type.Gem)
         {
             for (int dx = -1; dx <= 1; dx++)
             {
@@ -1013,7 +1037,16 @@ public class Game : MonoBehaviour
             }
             else
             {
-                cell = new Cell(position, Cell.Type.Empty, board.tileEmpty);
+                // 在空白单元格中生成宝石
+                if (Random.value <= gemSpawnChance)
+                {
+                    cell = new Cell(position, Cell.Type.Gem, board.tileGem);
+                    cell.isGem = true;
+                }
+                else
+                {
+                    cell = new Cell(position, Cell.Type.Empty, board.tileEmpty);
+                }
             }
             
             state[position] = cell;
@@ -1127,12 +1160,25 @@ public class Game : MonoBehaviour
     {
         if (scoreText != null)
         {
-            scoreText.text = $"当前积分: {score}";
+            scoreText.text = $"{score}";
         }
         if (highScoreText != null)
         {
             highScoreText.text = $"最高分: {highScore}";
         }
+        if (gemCountText != null)
+        {
+            gemCountText.text = $"{gemCount}";
+        }
+    }
+
+    // 新增：增加宝石数量
+    private void AddGem()
+    {
+        gemCount++;
+        PlayerPrefs.SetInt(GEM_COUNT_KEY, gemCount);
+        PlayerPrefs.Save();
+        UpdateScoreUI();
     }
 
     // 视角回调方法
@@ -1356,6 +1402,8 @@ public class Game : MonoBehaviour
 
     private void InitializeNormalBlock(Vector2Int blockCoord)
     {
+        if (initializedBlocks.ContainsKey(blockCoord)) return;
+
         int startX = blockCoord.x * blockSize;
         int startY = blockCoord.y * blockSize;
         int endX = startX + blockSize - 1;
@@ -1371,8 +1419,7 @@ public class Game : MonoBehaviour
         {
             for (int y = startY; y <= endY; y++)
             {
-                Vector2Int pos = new Vector2Int(x, y);
-                candidates.Add(pos);
+                candidates.Add(new Vector2Int(x, y));
             }
         }
 
@@ -1397,9 +1444,31 @@ public class Game : MonoBehaviour
 
         // 记录本区块地雷位置
         blockMinePositions[blockCoord] = minesInBlock;
+        initializedBlocks[blockCoord] = true;
 
-        // 计算本区块所有单元格的数字
+        // 计算本区块数字
         CalculateNumbersInBlock(blockCoord);
+
+        // 在空白单元格中生成宝石
+        for (int x = startX; x <= endX; x++)
+        {
+            for (int y = startY; y <= endY; y++)
+            {
+                Vector3Int position = new Vector3Int(x, y, 0);
+                if (state.TryGetValue(position, out Cell cell) && cell.type == Cell.Type.Empty)
+                {
+                    // 根据概率生成宝石
+                    if (Random.value <= gemSpawnChance)
+                    {
+                        cell.type = Cell.Type.Gem;
+                        cell.tile = board.tileGem;
+                        cell.isGem = true;
+                        state[position] = cell;
+                        Debug.Log($"在位置 ({x}, {y}) 生成宝石，贴图状态: {(board.tileGem != null ? "已设置" : "未设置")}");
+                    }
+                }
+            }
+        }
     }
 
     private IEnumerator BlinkCells(List<Vector2Int> cellsToBlink)
