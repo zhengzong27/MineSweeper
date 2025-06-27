@@ -451,6 +451,7 @@ MonoBehaviour:
   audioSource: {fileID: 219943127}
   Initgame: {fileID: 8300000, guid: 2be9358015d0f8e47b8dc1dcba11082b, type: 3}
   startButton: {fileID: 1078459758}
+  startButton2: {fileID: 1323560625}
 --- !u!114 &394950300
 MonoBehaviour:
   m_ObjectHideFlags: 0
